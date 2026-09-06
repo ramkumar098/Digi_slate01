@@ -1,0 +1,1686 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGI SLATE</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17">
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&amp;family=Orbitron:wght@400;700;900&amp;display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js">
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.min.js">
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.min.js">
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.min.js">
+  </script>
+  <!-- Tesseract.js for Math OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js">
+  </script>
+  <style>
+        :root {
+            --cyan: #00f5ff;
+            --purple: #a855f7;
+            --pink: #ec4899;
+            --blue: #3b82f6;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Raleway', sans-serif; margin: 0; overflow: hidden; background: #0a0a1a; color: #e0e0ff; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .glass { background: rgba(15, 15, 40, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(0, 245, 255, 0.15); border-radius: 16px; }
+        .glass-strong { background: rgba(20, 20, 50, 0.8); backdrop-filter: blur(30px); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 16px; }
+        .neon-border { box-shadow: 0 0 10px rgba(0, 245, 255, 0.3), inset 0 0 10px rgba(0, 245, 255, 0.05); }
+        .neon-text { text-shadow: 0 0 10px var(--cyan), 0 0 20px var(--cyan); }
+        #particles-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+        .screen { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s, transform 0.8s; }
+        .screen.hidden { opacity: 0; pointer-events: none; transform: scale(1.05); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse-dot 2s infinite; }
+        .status-dot.green { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        .status-dot.yellow { background: #eab308; box-shadow: 0 0 8px #eab308; }
+        .status-dot.red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+        @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes glow-pulse { 0%,100% { opacity: 0.8; } 50% { opacity: 1; } }
+        .btn-cyber { transition: all 0.2s; cursor: pointer; user-select: none; }
+        .btn-cyber:hover { transform: scale(1.05); filter: brightness(1.2); }
+        .btn-cyber:active { transform: scale(0.95); }
+        #drawing-canvas { cursor: crosshair; }
+        .control-btn { width: 100%; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: all 0.2s; border: 1px solid rgba(0,245,255,0.1); background: rgba(15,15,40,0.5); color: #c0c0ff; }
+        .control-btn:hover { background: rgba(0,245,255,0.1); border-color: rgba(0,245,255,0.3); }
+        .control-btn.active { background: rgba(0,245,255,0.15); border-color: var(--cyan); color: var(--cyan); }
+        .splash-logo { font-size: 3rem; animation: glow-pulse 2s infinite; }
+        .progress-bar { height: 4px; background: rgba(0,245,255,0.2); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); transition: width 0.3s; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.3); border-radius: 3px; }
+        @keyframes scan-line { 0% { top: 0%; } 100% { top: 100%; } }
+        .scanner-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: scan-line 2s linear infinite; }
+        /* voice-to-text floating display */
+        #voice-text-display {
+            position: absolute;
+            bottom: 70px;
+            left: 16px;
+            max-width: 60%;
+            padding: 10px 18px;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 245, 255, 0.4);
+            border-radius: 30px;
+            color: #b0f0ff;
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            box-shadow: 0 0 25px rgba(0, 245, 255, 0.15);
+            z-index: 20;
+            opacity: 0;
+            transform: translateY(10px);
+            font-family: 'Raleway', sans-serif;
+        }
+        #voice-text-display.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #voice-text-display .pulsing-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #00f5ff;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse-dot 1.2s infinite;
+            vertical-align: middle;
+        }
+        #voice-text-display .text-content {
+            display: inline-block;
+            vertical-align: middle;
+            max-width: 400px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        @media (max-width: 640px) {
+            #voice-text-display { max-width: 80%; bottom: 60px; font-size: 12px; padding: 8px 14px; }
+            #voice-text-display .text-content { max-width: 200px; }
+        }
+        /* Login error message */
+        #login-error {
+            color: #ef4444;
+            font-size: 12px;
+            text-align: center;
+            padding: 6px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            display: none;
+        }
+        #login-error.show { display: block; }
+        /* Faculty badge */
+        .faculty-badge {
+            background: rgba(168, 85, 247, 0.2);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 20px;
+            padding: 2px 12px;
+            font-size: 10px;
+            color: #a855f7;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        /* Air cursor */
+        #air-cursor {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #00f5ff;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+            display: none;
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.5), inset 0 0 20px rgba(0, 245, 255, 0.2);
+            transition: width 0.1s, height 0.1s;
+            transform: translate(-50%, -50%);
+        }
+        #air-cursor.active { display: block; }
+        #air-cursor.drawing { border-color: #a855f7; box-shadow: 0 0 30px rgba(168, 85, 247, 0.6), inset 0 0 30px rgba(168, 85, 247, 0.3); width: 12px; height: 12px; }
+        #air-cursor.erasing { border-color: #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.6), inset 0 0 30px rgba(239, 68, 68, 0.3); width: 30px; height: 30px; }
+
+        /* Professional Login Styles */
+        .login-container {
+            background: rgba(10, 10, 30, 0.85);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(0, 245, 255, 0.15);
+            border-radius: 24px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 245, 255, 0.05);
+        }
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, rgba(0, 245, 255, 0.03) 0%, transparent 70%);
+            animation: rotateGlow 20s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes rotateGlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+            position: relative;
+            z-index: 1;
+        }
+        .login-logo {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00f5ff, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+        .login-subtitle {
+            color: rgba(160, 160, 200, 0.7);
+            font-size: 0.85rem;
+            margin-top: 6px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .login-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 20px 0;
+            position: relative;
+            z-index: 1;
+        }
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.2), transparent);
+        }
+        .login-divider span {
+            color: rgba(160, 160, 200, 0.4);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            white-space: nowrap;
+        }
+        .login-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(0, 245, 255, 0.12);
+            border-radius: 12px;
+            color: #e0e0ff;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: 'Raleway', sans-serif;
+            position: relative;
+            z-index: 1;
+        }
+        .login-input:focus {
+            outline: none;
+            border-color: rgba(0, 245, 255, 0.4);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.05);
+        }
+        .login-input::placeholder {
+            color: rgba(160, 160, 200, 0.3);
+        }
+        .login-input-group {
+            position: relative;
+            z-index: 1;
+        }
+        .login-input-group label {
+            display: block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(160, 160, 200, 0.5);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #00f5ff, #7c3aed);
+            color: #0a0a1a;
+            font-weight: 700;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+            font-family: 'Raleway', sans-serif;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 245, 255, 0.3);
+        }
+        .login-btn:active {
+            transform: translateY(0px);
+        }
+        .login-btn-secondary {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(0, 245, 255, 0.15);
+            border-radius: 12px;
+            background: rgba(0, 245, 255, 0.05);
+            color: #00f5ff;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+            font-family: 'Raleway', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .login-btn-secondary:hover {
+            background: rgba(0, 245, 255, 0.1);
+            border-color: rgba(0, 245, 255, 0.3);
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .login-footer a {
+            color: rgba(0, 245, 255, 0.6);
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: color 0.3s ease;
+        }
+        .login-footer a:hover {
+            color: #00f5ff;
+        }
+        .login-toggle {
+            color: rgba(160, 160, 200, 0.5);
+            font-size: 0.8rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            font-family: 'Raleway', sans-serif;
+        }
+        .login-toggle:hover {
+            color: #00f5ff;
+        }
+        .login-remember {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(160, 160, 200, 0.5);
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .login-remember input[type="checkbox"] {
+            accent-color: #00f5ff;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .login-error {
+            color: #ef4444;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 8px;
+            background: rgba(239, 68, 68, 0.08);
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            display: none;
+            position: relative;
+            z-index: 1;
+        }
+        .login-error.show { display: block; }
+        .login-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: rgba(168, 85, 247, 0.15);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        @media (max-width: 480px) {
+            .login-container { padding: 32px 20px; }
+            .login-logo { font-size: 2rem; }
+        }
+
+        /* Auto-save indicator */
+        #save-indicator {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            font-size: 10px;
+            color: rgba(0, 245, 255, 0.4);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+            z-index: 10;
+            font-family: 'Raleway', sans-serif;
+            letter-spacing: 0.5px;
+        }
+        #save-indicator.show {
+            opacity: 1;
+        }
+        #save-indicator.saved {
+            color: #22c55e;
+        }
+  </style>
+ </head>
+ <body>
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- Splash Screen -->
+  <div id="splash-screen" class="screen">
+   <div class="text-center">
+    <div class="splash-logo font-orbitron font-bold neon-text">DIGI SLATE</div>
+    <p class="mt-4 text-cyan-300 opacity-70">Initializing Neural Interface...</p>
+    <div class="progress-bar w-64 mx-auto mt-8">
+     <div id="splash-progress" class="progress-fill" style="width:0%"></div>
+    </div>
+   </div>
+  </div>
+
+  <!-- Login Screen - Professional Design -->
+  <div id="login-screen" class="screen hidden">
+   <div class="login-container">
+    <div class="login-header">
+     <div class="login-logo">✦ DIGI SLATE</div>
+     <div class="login-subtitle">Faculty Access Portal</div>
+     <div style="margin-top: 8px;">
+      <span class="login-badge">Secure Authentication</span>
+     </div>
+    </div>
+
+    <form id="login-form">
+     <div class="login-input-group" style="margin-bottom: 16px;">
+      <label for="faculty-id">Faculty ID</label>
+      <input id="faculty-id" type="text" required class="login-input" placeholder="Enter your faculty ID" value="FAC-2026-001">
+     </div>
+
+     <div id="email-group" class="login-input-group" style="margin-bottom: 16px; display: none;">
+      <label for="login-email">Email Address</label>
+      <input id="login-email" type="email" class="login-input" placeholder="faculty@university.edu">
+     </div>
+
+     <div class="login-input-group" style="margin-bottom: 16px;">
+      <label for="login-pass">Password</label>
+      <input id="login-pass" type="password" required class="login-input" placeholder="Enter your password" value="faculty123">
+     </div>
+
+     <div id="login-error" class="login-error">Invalid credentials. Please try again.</div>
+
+     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: relative; z-index: 1;">
+      <label class="login-remember">
+       <input type="checkbox" id="remember-me" checked> Remember Me
+      </label>
+      <button type="button" id="toggle-new-faculty" onclick="toggleRegisterMode()" class="login-toggle">New Faculty?</button>
+     </div>
+
+     <button type="submit" id="submit-btn" class="login-btn">Enter Dashboard</button>
+
+     <div class="login-divider">
+      <span>or continue with</span>
+     </div>
+
+     <button type="button" onclick="startBarcodeScan()" class="login-btn-secondary">
+      <i data-lucide="qr-code" style="width:18px;height:18px;"></i>
+      Scan Barcode / ID Pass
+     </button>
+
+     <div class="login-footer">
+      <a href="#" onclick="return false;">Need help? Contact IT Support</a>
+     </div>
+    </form>
+
+    <!-- Barcode Scanning View Overlay -->
+    <div id="barcode-scanner-view" class="hidden absolute inset-0 glass-strong p-6 flex flex-col items-center justify-center rounded-2xl z-20" style="background: rgba(10,10,30,0.95);">
+     <h3 class="text-xs font-orbitron text-cyan-300 mb-2">Align Barcode / QR ID Code</h3>
+     <div class="relative w-48 h-48 border-2 border-cyan-400/60 rounded-lg overflow-hidden bg-black/60 mb-4">
+      <video id="barcode-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+      <div class="scanner-line"></div>
+     </div>
+     <p id="barcode-status" class="text-[11px] text-purple-300 mb-4 animate-pulse">Scanning card...</p>
+     <button type="button" onclick="stopBarcodeScan()" class="px-4 py-1.5 rounded bg-red-500/20 border border-red-500/40 text-red-300 text-xs hover:bg-red-500/40">Cancel</button>
+    </div>
+   </div>
+  </div>
+
+  <!-- Main Dashboard -->
+  <div id="dashboard" class="screen hidden" style="flex-direction:column; align-items:stretch;">
+   <!-- Header -->
+   <header class="glass px-4 py-2 mx-2 mt-2 flex items-center justify-between gap-4 relative z-10" style="border-radius:12px;">
+    <div class="flex items-center gap-3">
+     <h1 class="font-orbitron font-bold text-lg neon-text">DIGI SLATE</h1>
+     <span class="text-[10px] text-purple-300 opacity-70">AI Gesture Smart board</span>
+    </div>
+    <div class="flex items-center gap-4 text-[11px]">
+     <span class="flex items-center gap-1"><span id="cam-dot" class="status-dot yellow"></span><span id="cam-status">Loading</span></span> 
+     <span class="flex items-center gap-1"><span id="hand-dot" class="status-dot red"></span><span id="hand-status">No Hand</span></span> 
+     <span class="flex items-center gap-1"><span id="draw-dot" class="status-dot green"></span><span id="draw-status">Ready</span></span> 
+     <span class="text-cyan-400">FPS: <span id="fps-display">0</span></span> 
+     <span class="text-purple-300">Gesture: <span id="gesture-display">None</span></span>
+     <span class="faculty-badge" id="faculty-badge">FAC-2026-X8</span>
+     <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 transition-colors">Logout</button>
+    </div>
+   </header>
+
+   <!-- Main Content -->
+   <div class="flex flex-1 gap-2 p-2 overflow-hidden" style="min-height:0;">
+    <!-- Left: Camera + Canvas -->
+    <div class="flex-1 relative glass neon-border overflow-hidden" style="min-width:0;">
+     <video id="camera-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover opacity-30" style="transform:scaleX(-1);"></video>
+     <canvas id="hand-canvas" class="absolute inset-0 w-full h-full"></canvas>
+     <canvas id="drawing-canvas" class="absolute inset-0 w-full h-full"></canvas>
+     <div id="air-cursor"></div>
+     <div id="math-result" class="absolute bottom-4 left-4 glass px-4 py-2 text-cyan-300 font-mono text-sm hidden"></div>
+     <div id="shape-result" class="absolute top-4 left-4 glass px-3 py-1 text-purple-300 text-xs hidden"></div>
+     <div id="save-indicator">✓ Auto-saved</div>
+     
+     <!-- VOICE-TO-TEXT FLOATING DISPLAY -->
+     <div id="voice-text-display">
+       <span class="pulsing-dot"></span>
+       <span class="text-content" id="voice-text-content">Listening...</span>
+     </div>
+    </div>
+
+    <!-- Right: Controls -->
+    <aside class="w-56 flex flex-col gap-2 overflow-y-auto pr-1" style="min-height:0;">
+     <div class="glass-strong p-3 space-y-2">
+      <h3 class="text-[10px] uppercase tracking-widest text-cyan-400 font-bold mb-2">Tools</h3>
+      <button id="btn-gesture" class="control-btn active" onclick="toggleGesture()"><i data-lucide="hand" style="width:14px;height:14px;"></i>Air Gestures</button> 
+      <button id="btn-mouse" class="control-btn active" onclick="toggleMouse()"><i data-lucide="mouse-pointer" style="width:14px;height:14px;"></i>Mouse Draw</button> 
+      <button id="btn-voice" class="control-btn" onclick="toggleVoice()"><i data-lucide="mic" style="width:14px;height:14px;"></i>Voice Commands</button> 
+      <button id="btn-math" class="control-btn" onclick="toggleMath()"><i data-lucide="calculator" style="width:14px;height:14px;"></i>Math Solver</button> 
+      <button id="btn-shape" class="control-btn" onclick="toggleShape()"><i data-lucide="shapes" style="width:14px;height:14px;"></i>Shape Recognition</button>
+     </div>
+     <div class="glass-strong p-3 space-y-2">
+      <h3 class="text-[10px] uppercase tracking-widest text-purple-400 font-bold mb-2">Brush</h3>
+      <div class="flex items-center gap-2">
+       <label class="text-[10px] text-gray-400 w-10">Size</label> 
+       <input id="brush-size" type="range" min="1" max="30" value="4" class="flex-1 accent-cyan-400" oninput="updateBrush()">
+      </div>
+      <div class="flex items-center gap-2">
+       <label class="text-[10px] text-gray-400 w-10">Color</label> 
+       <input id="brush-color" type="color" value="#00f5ff" class="w-8 h-6 rounded border-0 cursor-pointer" oninput="updateBrush()">
+      </div>
+      <div class="flex items-center gap-2">
+       <label class="text-[10px] text-gray-400 w-10">Glow</label> 
+       <input id="brush-glow" type="range" min="0" max="30" value="12" class="flex-1 accent-purple-400" oninput="updateBrush()">
+      </div>
+      <select id="brush-type" class="w-full text-xs rounded-lg px-2 py-1 bg-black/40 border border-purple-500/30 text-white" onchange="updateBrush()">
+       <option value="glow">Glow Brush</option> 
+       <option value="neon">Neon Brush</option> 
+       <option value="pen">Pen</option> 
+       <option value="marker">Marker</option> 
+       <option value="eraser">Eraser</option> 
+      </select>
+     </div>
+     <div class="glass-strong p-3 space-y-2">
+      <h3 class="text-[10px] uppercase tracking-widest text-pink-400 font-bold mb-2">Actions</h3>
+      <div class="grid grid-cols-2 gap-1">
+       <button class="control-btn justify-center" onclick="undo()"><i data-lucide="undo" style="width:12px;height:12px;"></i>Undo</button> 
+       <button class="control-btn justify-center" onclick="redo()"><i data-lucide="redo" style="width:12px;height:12px;"></i>Redo</button> 
+       <button class="control-btn justify-center" onclick="clearCanvas()"><i data-lucide="trash-2" style="width:12px;height:12px;"></i>Clear</button> 
+       <button class="control-btn justify-center" onclick="saveCanvas()"><i data-lucide="save" style="width:12px;height:12px;"></i>Save</button> 
+       <button class="control-btn justify-center col-span-2" onclick="exportCanvas()"><i data-lucide="download" style="width:12px;height:12px;"></i>Export PNG</button>
+      </div>
+     </div>
+    </aside>
+   </div>
+  </div>
+
+  <script>
+    // ========== PARTICLES ==========
+    (function() {
+        const pc = document.getElementById('particles-canvas');
+        const pctx = pc.getContext('2d');
+        let particles = [];
+        function resizeParticles() { pc.width = window.innerWidth; pc.height = window.innerHeight; }
+        resizeParticles();
+        window.addEventListener('resize', resizeParticles);
+        for (let i = 0; i < 60; i++) {
+            particles.push({ x: Math.random()*pc.width, y: Math.random()*pc.height, vx: (Math.random()-0.5)*0.3, vy: (Math.random()-0.5)*0.3, r: Math.random()*2+0.5, color: ['#00f5ff','#a855f7','#ec4899','#3b82f6'][Math.floor(Math.random()*4)] });
+        }
+        function animParticles() {
+            pctx.clearRect(0,0,pc.width,pc.height);
+            particles.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0) p.x = pc.width; if (p.x > pc.width) p.x = 0;
+                if (p.y < 0) p.y = pc.height; if (p.y > pc.height) p.y = 0;
+                pctx.beginPath(); pctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                pctx.fillStyle = p.color; pctx.globalAlpha = 0.4; pctx.fill();
+            });
+            pctx.globalAlpha = 1;
+            requestAnimationFrame(animParticles);
+        }
+        animParticles();
+    })();
+
+    // ========== AUTHENTICATION SYSTEM ==========
+    const facultyDB = {
+        'FAC-2026-001': { password: 'faculty123', email: 'dr.sharma@aether.edu', name: 'Dr. Sharma' },
+        'FAC-2026-002': { password: 'faculty123', email: 'prof.patel@aether.edu', name: 'Prof. Patel' },
+        'FAC-2026-003': { password: 'faculty123', email: 'dr.gupta@aether.edu', name: 'Dr. Gupta' }
+    };
+
+    let currentUser = null;
+    let isRegisterMode = false;
+
+    function checkSession() {
+        const savedSession = localStorage.getItem('aether-session');
+        if (savedSession) {
+            try {
+                const session = JSON.parse(savedSession);
+                if (session.facultyId && session.timestamp && (Date.now() - session.timestamp < 86400000)) {
+                    currentUser = session;
+                    return true;
+                } else {
+                    localStorage.removeItem('aether-session');
+                }
+            } catch(e) {
+                localStorage.removeItem('aether-session');
+            }
+        }
+        return false;
+    }
+
+    function saveSession(facultyId, name, email) {
+        const session = {
+            facultyId: facultyId,
+            name: name || facultyId,
+            email: email || '',
+            timestamp: Date.now()
+        };
+        localStorage.setItem('aether-session', JSON.stringify(session));
+        currentUser = session;
+    }
+
+    function login(facultyId, password, email = null) {
+        const errorEl = document.getElementById('login-error');
+        errorEl.classList.remove('show');
+        
+        const faculty = facultyDB[facultyId];
+        if (!faculty) {
+            errorEl.textContent = 'Faculty ID not found. Please check and try again.';
+            errorEl.classList.add('show');
+            return false;
+        }
+        
+        if (faculty.password !== password) {
+            errorEl.textContent = 'Invalid password. Please try again.';
+            errorEl.classList.add('show');
+            return false;
+        }
+        
+        if (isRegisterMode && email) {
+            if (faculty.email !== email) {
+                errorEl.textContent = 'Email does not match our records.';
+                errorEl.classList.add('show');
+                return false;
+            }
+        }
+        
+        saveSession(facultyId, faculty.name, faculty.email);
+        document.getElementById('login-screen').classList.add('hidden');
+        showDashboard();
+        return true;
+    }
+    function register(facultyId, password, email) {
+        const errorEl = document.getElementById('login-error');
+        errorEl.classList.remove('show');
+        
+        if (facultyDB[facultyId]) {
+            errorEl.textContent = 'Faculty ID already exists. Please use login.';
+            errorEl.classList.add('show');
+            return false;
+        }
+        
+        if (!facultyId || facultyId.length < 5) {
+            errorEl.textContent = 'Please enter a valid Faculty ID.';
+            errorEl.classList.add('show');
+            return false;
+        }
+        if (!password || password.length < 6) {
+            errorEl.textContent = 'Password must be at least 6 characters.';
+            errorEl.classList.add('show');
+            return false;
+        }
+        if (!email || !email.includes('@')) {
+            errorEl.textContent = 'Please enter a valid email address.';
+            errorEl.classList.add('show');
+            return false;
+        }
+        
+        facultyDB[facultyId] = { password: password, email: email, name: facultyId };
+        saveSession(facultyId, facultyId, email);
+        document.getElementById('login-screen').classList.add('hidden');
+        showDashboard();
+        return true;
+    }
+
+    function toggleRegisterMode() {
+        isRegisterMode = !isRegisterMode;
+        const emailGroup = document.getElementById('email-group');
+        const emailInput = document.getElementById('login-email');
+        const submitBtn = document.getElementById('submit-btn');
+        const toggleBtn = document.getElementById('toggle-new-faculty');
+        const errorEl = document.getElementById('login-error');
+        errorEl.classList.remove('show');
+
+        if (isRegisterMode) {
+            document.querySelector('.login-logo').textContent = '✦ REGISTER';
+            document.querySelector('.login-subtitle').textContent = 'Create New Faculty Account';
+            emailGroup.style.display = 'block';
+            emailInput.setAttribute('required', 'true');
+            submitBtn.textContent = 'Register Faculty';
+            toggleBtn.textContent = '← Existing Faculty?';
+        } else {
+            document.querySelector('.login-logo').textContent = '✦ DIGI SLATE';
+            document.querySelector('.login-subtitle').textContent = 'Faculty Access Portal';
+            emailGroup.style.display = 'none';
+            emailInput.removeAttribute('required');
+            submitBtn.textContent = 'Enter Dashboard';
+            toggleBtn.textContent = 'New Faculty?';
+        }
+    }
+
+    function logout() {
+        // Save drawing before logout
+        saveDrawingData();
+        
+        localStorage.removeItem('aether-session');
+        currentUser = null;
+        
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+        }
+        
+        if (recognition) {
+            try { recognition.onend = null; recognition.stop(); } catch(e) {}
+            recognition = null;
+        }
+        isListening = false;
+        voiceDisplay.classList.remove('active');
+        voiceEnabled = false;
+        
+        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+        
+        document.getElementById('login-form').reset();
+        document.getElementById('faculty-id').value = '';
+        document.getElementById('login-pass').value = '';
+        const errorEl = document.getElementById('login-error');
+        errorEl.classList.remove('show');
+        
+        if (isRegisterMode) {
+            isRegisterMode = false;
+            document.querySelector('.login-logo').textContent = '✦ DIGI SLATE';
+            document.querySelector('.login-subtitle').textContent = 'Faculty Access Portal';
+            document.getElementById('email-group').style.display = 'none';
+            document.getElementById('login-email').removeAttribute('required');
+            document.getElementById('submit-btn').textContent = 'Enter Dashboard';
+            document.getElementById('toggle-new-faculty').textContent = 'New Faculty?';
+        }
+    }
+
+    // ========== DRAWING DATA STORAGE ==========
+    function saveDrawingData() {
+        try {
+            const dataUrl = drawCanvas.toDataURL('image/png');
+            const facultyId = currentUser ? currentUser.facultyId : 'guest';
+            const key = 'drawing_data_' + facultyId;
+            localStorage.setItem(key, dataUrl);
+            
+            // Show save indicator
+            const indicator = document.getElementById('save-indicator');
+            indicator.textContent = '✓ Auto-saved';
+            indicator.className = 'show saved';
+            setTimeout(() => {
+                indicator.className = '';
+            }, 2000);
+        } catch(e) {
+            console.log('Save drawing error:', e);
+        }
+    }
+
+    function loadDrawingData() {
+        try {
+            const facultyId = currentUser ? currentUser.facultyId : 'guest';
+            const key = 'drawing_data_' + facultyId;
+            const savedData = localStorage.getItem(key);
+            
+            if (savedData) {
+                const img = new Image();
+                img.onload = function() {
+                    drawCtx.drawImage(img, 0, 0);
+                    // Push initial state to undo stack
+                    undoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+                    
+                    // Show restore indicator
+                    const indicator = document.getElementById('save-indicator');
+                    indicator.textContent = '✓ Restored previous drawing';
+                    indicator.className = 'show saved';
+                    setTimeout(() => {
+                        indicator.className = '';
+                    }, 3000);
+                };
+                img.src = savedData;
+                return true;
+            }
+        } catch(e) {
+            console.log('Load drawing error:', e);
+        }
+        return false;
+    }
+
+    // Auto-save drawing on changes (debounced)
+    let saveTimeout = null;
+    function autoSaveDrawing() {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            saveDrawingData();
+            saveTimeout = null;
+        }, 1000);
+    }
+
+    // ========== SCREENS & INITIALIZATION ==========
+    let splashProgress = 0;
+    const splashInterval = setInterval(() => {
+        splashProgress += Math.random()*15+5;
+        if (splashProgress >= 100) splashProgress = 100;
+        document.getElementById('splash-progress').style.width = splashProgress+'%';
+        if (splashProgress >= 100) {
+            clearInterval(splashInterval);
+            setTimeout(() => {
+                document.getElementById('splash-screen').classList.add('hidden');
+                if (checkSession()) {
+                    document.getElementById('login-screen').classList.add('hidden');
+                    showDashboard();
+                } else {
+                    document.getElementById('login-screen').classList.remove('hidden');
+                }
+            }, 500);
+        }
+    }, 200);
+
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const facultyId = document.getElementById('faculty-id').value.trim();
+        const password = document.getElementById('login-pass').value;
+        const email = document.getElementById('login-email').value.trim();
+        
+        if (isRegisterMode) {
+            register(facultyId, password, email);
+        } else {
+            login(facultyId, password);
+        }
+    });
+
+    // Barcode Scanning
+    let barcodeStream = null;
+    let barcodeScanInterval = null;
+
+    async function startBarcodeScan() {
+        const scannerView = document.getElementById('barcode-scanner-view');
+        const barcodeVideo = document.getElementById('barcode-video');
+        const statusText = document.getElementById('barcode-status');
+        
+        scannerView.classList.remove('hidden');
+        statusText.textContent = "Initializing Camera Scanner...";
+
+        try {
+            barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            barcodeVideo.srcObject = barcodeStream;
+            await barcodeVideo.play();
+            statusText.textContent = "Align Faculty Barcode ID Code...";
+
+            if ('BarcodeDetector' in window) {
+                const barcodeDetector = new BarcodeDetector();
+                barcodeScanInterval = setInterval(async () => {
+                    try {
+                        const barcodes = await barcodeDetector.detect(barcodeVideo);
+                        if (barcodes.length > 0) {
+                            handleBarcodeSuccess(barcodes[0].rawValue);
+                        }
+                    } catch (err) {}
+                }, 500);
+            } else {
+                barcodeScanInterval = setTimeout(() => {
+                    handleBarcodeSuccess("FAC-2026-001");
+                }, 3500);
+            }
+        } catch (e) {
+            statusText.textContent = "Camera access denied or unreadable.";
+        }
+    }
+
+    function handleBarcodeSuccess(scannedCode) {
+        document.getElementById('barcode-status').textContent = `Scanned: ${scannedCode}`;
+        setTimeout(() => {
+            stopBarcodeScan();
+            const facultyId = scannedCode.trim();
+            const faculty = facultyDB[facultyId];
+            if (faculty) {
+                saveSession(facultyId, faculty.name, faculty.email);
+                document.getElementById('login-screen').classList.add('hidden');
+                showDashboard();
+            } else {
+                let matched = false;
+                for (const [id, data] of Object.entries(facultyDB)) {
+                    if (id.includes(scannedCode) || scannedCode.includes(id)) {
+                        saveSession(id, data.name, data.email);
+                        document.getElementById('login-screen').classList.add('hidden');
+                        showDashboard();
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched) {
+                    document.getElementById('barcode-status').textContent = `❌ Faculty ID not found: ${scannedCode}`;
+                }
+            }
+        }, 500);
+    }
+
+    function stopBarcodeScan() {
+        if (barcodeScanInterval) clearInterval(barcodeScanInterval);
+        if (barcodeStream) {
+            barcodeStream.getTracks().forEach(track => track.stop());
+            barcodeStream = null;
+        }
+        document.getElementById('barcode-scanner-view').classList.add('hidden');
+    }
+
+    function showDashboard() {
+        document.getElementById('dashboard').classList.remove('hidden');
+        if (currentUser) {
+            document.getElementById('faculty-badge').textContent = currentUser.facultyId;
+        }
+        resizeDrawingCanvas();
+        initCamera();
+        
+        // Load saved drawing data
+        setTimeout(() => {
+            loadDrawingData();
+        }, 500);
+    }
+
+    // ========== DRAWING ENGINE ==========
+    const drawCanvas = document.getElementById('drawing-canvas');
+    const drawCtx = drawCanvas.getContext('2d');
+    let brush = { size: 4, color: '#00f5ff', glow: 12, type: 'glow' };
+    let isDrawing = false, mouseEnabled = true, gestureEnabled = true;
+    let undoStack = [], redoStack = [];
+    let lastX = 0, lastY = 0;
+    let currentStrokePoints = [];
+    let smoothingPoints = [];
+    const SMOOTHING_FACTOR = 0.5;
+
+    function resizeDrawingCanvas() {
+        const rect = drawCanvas.parentElement.getBoundingClientRect();
+        drawCanvas.width = rect.width; drawCanvas.height = rect.height;
+        const hc = document.getElementById('hand-canvas');
+        hc.width = rect.width; hc.height = rect.height;
+        redrawFromStack();
+    }
+    window.addEventListener('resize', resizeDrawingCanvas);
+
+    function saveState() { 
+        undoStack.push(drawCtx.getImageData(0,0,drawCanvas.width,drawCanvas.height)); 
+        if (undoStack.length > 50) undoStack.shift(); 
+        redoStack = []; 
+        autoSaveDrawing(); // Auto-save on state change
+    }
+    
+    function undo() { 
+        if (!undoStack.length) return; 
+        redoStack.push(drawCtx.getImageData(0,0,drawCanvas.width,drawCanvas.height)); 
+        drawCtx.putImageData(undoStack.pop(),0,0); 
+        autoSaveDrawing();
+    }
+    
+    function redo() { 
+        if (!redoStack.length) return; 
+        undoStack.push(drawCtx.getImageData(0,0,drawCanvas.width,drawCanvas.height)); 
+        drawCtx.putImageData(redoStack.pop(),0,0); 
+        autoSaveDrawing();
+    }
+    
+    function clearCanvas() { 
+        saveState(); 
+        drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height); 
+        hideResults(); 
+        autoSaveDrawing();
+    }
+    
+    function redrawFromStack() { 
+        if (undoStack.length) drawCtx.putImageData(undoStack[undoStack.length-1],0,0); 
+    }
+
+    function drawSmoothLine(points) {
+        if (points.length < 2) return;
+        
+        drawCtx.beginPath();
+        drawCtx.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length - 1; i++) {
+            const p0 = points[i - 1];
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            
+            const cp1x = p1.x + (p2.x - p0.x) / 6;
+            const cp1y = p1.y + (p2.y - p0.y) / 6;
+            const cp2x = p2.x - (p2.x - p0.x) / 6;
+            const cp2y = p2.y - (p2.y - p0.y) / 6;
+            
+            drawCtx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        }
+        
+        drawCtx.strokeStyle = brush.type === 'eraser' ? 'rgba(0,0,0,1)' : brush.color;
+        drawCtx.lineWidth = brush.size;
+        drawCtx.lineCap = 'round';
+        drawCtx.lineJoin = 'round';
+        
+        if (brush.type === 'eraser') {
+            drawCtx.globalCompositeOperation = 'destination-out';
+        } else {
+            drawCtx.globalCompositeOperation = 'source-over';
+            drawCtx.shadowColor = brush.color;
+            drawCtx.shadowBlur = brush.glow;
+        }
+        drawCtx.stroke();
+        drawCtx.shadowBlur = 0;
+        drawCtx.globalCompositeOperation = 'source-over';
+    }
+
+    function drawLine(x1, y1, x2, y2) {
+        drawCtx.beginPath();
+        drawCtx.moveTo(x1, y1);
+        drawCtx.lineTo(x2, y2);
+        drawCtx.strokeStyle = brush.type === 'eraser' ? 'rgba(0,0,0,1)' : brush.color;
+        drawCtx.lineWidth = brush.size;
+        drawCtx.lineCap = 'round';
+        drawCtx.lineJoin = 'round';
+        if (brush.type === 'eraser') {
+            drawCtx.globalCompositeOperation = 'destination-out';
+        } else {
+            drawCtx.globalCompositeOperation = 'source-over';
+            drawCtx.shadowColor = brush.color;
+            drawCtx.shadowBlur = brush.glow;
+        }
+        drawCtx.stroke();
+        drawCtx.shadowBlur = 0;
+        drawCtx.globalCompositeOperation = 'source-over';
+        
+        // Auto-save after drawing
+        autoSaveDrawing();
+    }
+
+    function hideResults() {
+        document.getElementById('math-result').classList.add('hidden');
+        document.getElementById('shape-result').classList.add('hidden');
+    }
+
+    drawCanvas.addEventListener('mousedown', e => { 
+        if (!mouseEnabled) return; 
+        saveState(); 
+        isDrawing = true; 
+        [lastX, lastY] = [e.offsetX, e.offsetY]; 
+        currentStrokePoints = [{x: e.offsetX, y: e.offsetY}];
+        smoothingPoints = [{x: e.offsetX, y: e.offsetY}];
+    });
+    drawCanvas.addEventListener('mousemove', e => { 
+        if (!isDrawing || !mouseEnabled) return; 
+        drawLine(lastX, lastY, e.offsetX, e.offsetY);
+        [lastX, lastY] = [e.offsetX, e.offsetY];
+        currentStrokePoints.push({x: e.offsetX, y: e.offsetY});
+        smoothingPoints.push({x: e.offsetX, y: e.offsetY});
+        if (smoothingPoints.length > 10) smoothingPoints.shift();
+    });
+    drawCanvas.addEventListener('mouseup', () => handleStrokeEnd());
+    drawCanvas.addEventListener('mouseleave', () => handleStrokeEnd());
+
+    function handleStrokeEnd() {
+        if (!isDrawing) return;
+        isDrawing = false;
+        if (shapeMode && currentStrokePoints.length > 5) {
+            processShapeRecognition(currentStrokePoints);
+        }
+        if (mathMode) {
+            triggerMathSolver();
+        }
+        currentStrokePoints = [];
+        smoothingPoints = [];
+        autoSaveDrawing();
+    }
+
+    function updateBrush() {
+        brush.size = +document.getElementById('brush-size').value;
+        brush.color = document.getElementById('brush-color').value;
+        brush.glow = +document.getElementById('brush-glow').value;
+        brush.type = document.getElementById('brush-type').value;
+    }
+
+    function saveCanvas() { 
+        saveDrawingData();
+        const a = document.createElement('a'); 
+        a.href = drawCanvas.toDataURL('image/png'); 
+        a.download = 'aether-board.png'; 
+        a.click(); 
+    }
+    function exportCanvas() { saveCanvas(); }
+
+    // ========== SHAPE RECOGNITION SYSTEM ==========
+    function processShapeRecognition(pts) {
+        const shapeRes = document.getElementById('shape-result');
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        pts.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+        });
+
+        const w = maxX - minX;
+        const h = maxY - minY;
+        const startEndDist = Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].y - pts[pts.length - 1].y);
+        const perimeter = pts.reduce((acc, p, i) => i === 0 ? 0 : acc + Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y), 0);
+        const isClosed = startEndDist < perimeter * 0.25;
+
+        const corners = detectCorners(pts);
+        let recognizedShape = null;
+
+        if (isClosed) {
+            if (corners.length === 3) {
+                recognizedShape = 'Triangle';
+            } else if (corners.length === 4) {
+                recognizedShape = Math.abs(w - h) < Math.max(w, h) * 0.25 ? 'Square' : 'Rectangle';
+            } else {
+                recognizedShape = 'Circle';
+            }
+        } else {
+            if (corners.length <= 2) recognizedShape = 'Line';
+        }
+
+        if (recognizedShape) {
+            shapeRes.textContent = `Shape: ${recognizedShape}`;
+            shapeRes.classList.remove('hidden');
+            smoothAndDrawShape(recognizedShape, minX, minY, w, h, pts, corners);
+        }
+    }
+
+    function detectCorners(pts) {
+        const corners = [];
+        const step = Math.max(1, Math.floor(pts.length / 20));
+        for (let i = step; i < pts.length - step; i += step) {
+            const p1 = pts[i - step],
+                p2 = pts[i],
+                p3 = pts[i + step];
+            const angle = Math.abs(Math.atan2(p3.y - p2.y, p3.x - p2.x) - Math.atan2(p1.y - p2.y, p1.x - p2.x));
+            const deg = (angle * 180) / Math.PI;
+            if (deg > 30 && deg < 150) corners.push(p2);
+        }
+        return corners;
+    }
+
+    function smoothAndDrawShape(shape, x, y, w, h, pts, corners) {
+        if (undoStack.length) drawCtx.putImageData(undoStack[undoStack.length - 1], 0, 0);
+
+        drawCtx.beginPath();
+        drawCtx.strokeStyle = brush.color;
+        drawCtx.lineWidth = brush.size;
+        drawCtx.shadowColor = brush.color;
+        drawCtx.shadowBlur = brush.glow;
+
+        if (shape === 'Circle') {
+            const cx = x + w / 2,
+                cy = y + h / 2,
+                r = Math.max(w, h) / 2;
+            drawCtx.arc(cx, cy, r, 0, Math.PI * 2);
+        } else if (shape === 'Square' || shape === 'Rectangle') {
+            drawCtx.rect(x, y, w, h);
+        } else if (shape === 'Triangle' && corners.length >= 3) {
+            drawCtx.moveTo(corners[0].x, corners[0].y);
+            drawCtx.lineTo(corners[1].x, corners[1].y);
+            drawCtx.lineTo(corners[2].x, corners[2].y);
+            drawCtx.closePath();
+        } else if (shape === 'Line') {
+            drawCtx.moveTo(pts[0].x, pts[0].y);
+            drawCtx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+        }
+        drawCtx.stroke();
+        drawCtx.shadowBlur = 0;
+        autoSaveDrawing();
+    }
+
+    // ========== MATH SOLVER ENGINE ==========
+    let mathDebounceTimer = null;
+
+    function triggerMathSolver() {
+        clearTimeout(mathDebounceTimer);
+        mathDebounceTimer = setTimeout(async () => {
+            const mathRes = document.getElementById('math-result');
+            mathRes.textContent = 'Solving Math Expression...';
+            mathRes.classList.remove('hidden');
+
+            try {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = drawCanvas.width;
+                offCanvas.height = drawCanvas.height;
+                const offCtx = offCanvas.getContext('2d');
+                offCtx.fillStyle = '#FFFFFF';
+                offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+                offCtx.drawImage(drawCanvas, 0, 0);
+
+                const { data: { text } } = await Tesseract.recognize(offCanvas, 'eng', {
+                    tessedit_char_whitelist: '0123456789+-*/()=xX. '
+                });
+
+                const cleanedText = text.replace(/[^0-9+\-*/()]/g, '');
+                if (!cleanedText) {
+                    mathRes.textContent = 'Math: Unrecognized input';
+                    return;
+                }
+
+                const result = eval(cleanedText);
+                mathRes.textContent = `Math: ${cleanedText} = ${result}`;
+            } catch (err) {
+                mathRes.textContent = 'Math: Could not evaluate expression';
+            }
+        }, 1200);
+    }
+
+    // ========== CAMERA & MEDIAPIPE WITH SMOOTH GESTURES ==========
+    let cameraStream = null, handsModel = null;
+    let prevFingerTip = null, gestureDrawing = false;
+    let fpsFrames = 0, fpsTime = performance.now();
+    let gestureSmoothX = 0, gestureSmoothY = 0;
+    let isGestureInitialized = false;
+    const airCursor = document.getElementById('air-cursor');
+
+    async function initCamera() {
+        const video = document.getElementById('camera-video');
+        const camDot = document.getElementById('cam-dot');
+        const camStatus = document.getElementById('cam-status');
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
+            video.srcObject = cameraStream;
+            await video.play();
+            camDot.className = 'status-dot green';
+            camStatus.textContent = 'Connected';
+            initMediaPipe(video);
+        } catch (e) {
+            camDot.className = 'status-dot red';
+            camStatus.textContent = 'No Camera';
+            setTimeout(initCamera, 3000);
+        }
+    }
+
+    function initMediaPipe(video) {
+        handsModel = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}` });
+        handsModel.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7 });
+        handsModel.onResults(onHandResults);
+
+        async function processVideoFrame() {
+            if (video.readyState >= 2) {
+                await handsModel.send({ image: video });
+            }
+            requestAnimationFrame(processVideoFrame);
+        }
+        processVideoFrame();
+    }
+
+    function onHandResults(results) {
+        fpsFrames++;
+        const now = performance.now();
+        if (now - fpsTime >= 1000) {
+            document.getElementById('fps-display').textContent = fpsFrames;
+            fpsFrames = 0;
+            fpsTime = now;
+        }
+
+        const hc = document.getElementById('hand-canvas');
+        const hctx = hc.getContext('2d');
+        hctx.clearRect(0, 0, hc.width, hc.height);
+
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            document.getElementById('hand-dot').className = 'status-dot green';
+            document.getElementById('hand-status').textContent = 'Hand Detected';
+
+            const landmarks = results.multiHandLandmarks[0];
+            drawHandLandmarks(hctx, landmarks, hc.width, hc.height);
+
+            if (gestureEnabled) processGestures(landmarks);
+        } else {
+            document.getElementById('hand-dot').className = 'status-dot red';
+            document.getElementById('hand-status').textContent = 'No Hand';
+            document.getElementById('gesture-display').textContent = 'None';
+            airCursor.classList.remove('active', 'drawing', 'erasing');
+            if (gestureDrawing) {
+                gestureDrawing = false;
+                handleStrokeEnd();
+            }
+            prevFingerTip = null;
+            isGestureInitialized = false;
+        }
+    }
+
+    function drawHandLandmarks(ctx, landmarks, w, h) {
+        ctx.fillStyle = '#00f5ff';
+        ctx.shadowColor = '#00f5ff';
+        ctx.shadowBlur = 8;
+        const connections = [
+            [0, 1],
+            [1, 2],
+            [2, 3],
+            [3, 4],
+            [0, 5],
+            [5, 6],
+            [6, 7],
+            [7, 8],
+            [5, 9],
+            [9, 10],
+            [10, 11],
+            [11, 12],
+            [9, 13],
+            [13, 14],
+            [14, 15],
+            [15, 16],
+            [13, 17],
+            [17, 18],
+            [18, 19],
+            [19, 20],
+            [0, 17]
+        ];
+        ctx.strokeStyle = 'rgba(168,85,247,0.6)';
+        ctx.lineWidth = 2;
+        connections.forEach(([a, b]) => {
+            ctx.beginPath();
+            ctx.moveTo((1 - landmarks[a].x) * w, landmarks[a].y * h);
+            ctx.lineTo((1 - landmarks[b].x) * w, landmarks[b].y * h);
+            ctx.stroke();
+        });
+        landmarks.forEach((lm, i) => {
+            ctx.beginPath();
+            ctx.arc((1 - lm.x) * w, lm.y * h, [4, 8, 12, 16, 20].includes(i) ? 6 : 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.shadowBlur = 0;
+    }
+
+    function countFingers(landmarks) {
+        const thumbUp = Math.abs(landmarks[4].x - landmarks[2].x) > 0.05;
+        const indexUp = landmarks[8].y < landmarks[6].y;
+        const middleUp = landmarks[12].y < landmarks[10].y;
+        const ringUp = landmarks[16].y < landmarks[14].y;
+        const pinkyUp = landmarks[20].y < landmarks[18].y;
+        return {
+            thumb: thumbUp,
+            index: indexUp,
+            middle: middleUp,
+            ring: ringUp,
+            pinky: pinkyUp,
+            count: [thumbUp, indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length
+        };
+    }
+    function processGestures(landmarks) {
+        const fingers = countFingers(landmarks);
+        const canvasW = drawCanvas.width,
+            canvasH = drawCanvas.height;
+        const rawX = (1 - landmarks[8].x) * canvasW;
+        const rawY = landmarks[8].y * canvasH;
+
+        if (!isGestureInitialized) {
+            gestureSmoothX = rawX;
+            gestureSmoothY = rawY;
+            isGestureInitialized = true;
+        } else {
+            const smoothFactor = 0.3;
+            gestureSmoothX += (rawX - gestureSmoothX) * smoothFactor;
+            gestureSmoothY += (rawY - gestureSmoothY) * smoothFactor;
+        }
+
+        const cx = gestureSmoothX;
+        const cy = gestureSmoothY;
+
+        const canvasRect = drawCanvas.getBoundingClientRect();
+        const cursorX = canvasRect.left + cx;
+        const cursorY = canvasRect.top + cy;
+        airCursor.style.left = cursorX + 'px';
+        airCursor.style.top = cursorY + 'px';
+
+        let gestureName = 'None';
+        let isDrawingMode = false;
+        let isErasingMode = false;
+
+        if (fingers.count === 1 && fingers.index) {
+            gestureName = 'Draw';
+            isDrawingMode = true;
+            airCursor.className = 'active drawing';
+            
+            if (prevFingerTip) {
+                if (!gestureDrawing) {
+                    saveState();
+                    gestureDrawing = true;
+                    currentStrokePoints = [{x: prevFingerTip.x, y: prevFingerTip.y}];
+                    smoothingPoints = [{x: prevFingerTip.x, y: prevFingerTip.y}];
+                }
+                drawLine(prevFingerTip.x, prevFingerTip.y, cx, cy);
+                currentStrokePoints.push({x: cx, y: cy});
+                smoothingPoints.push({x: cx, y: cy});
+                if (smoothingPoints.length > 10) smoothingPoints.shift();
+            }
+            prevFingerTip = {x: cx, y: cy};
+            document.getElementById('draw-status').textContent = 'Drawing';
+            document.getElementById('draw-dot').className = 'status-dot green';
+        } else if (fingers.count === 2 && fingers.index && fingers.middle) {
+            gestureName = 'Pointer';
+            airCursor.className = 'active';
+            if (gestureDrawing) {
+                gestureDrawing = false;
+                handleStrokeEnd();
+            }
+            prevFingerTip = null;
+            document.getElementById('draw-status').textContent = 'Ready';
+        } else if (fingers.count >= 3 && fingers.index && fingers.middle && fingers.ring) {
+            gestureName = 'Erase';
+            isErasingMode = true;
+            airCursor.className = 'active erasing';
+            if (prevFingerTip) {
+                const savedComp = drawCtx.globalCompositeOperation;
+                drawCtx.globalCompositeOperation = 'destination-out';
+                drawCtx.beginPath();
+                drawCtx.arc(cx, cy, 25, 0, Math.PI * 2);
+                drawCtx.fill();
+                drawCtx.globalCompositeOperation = savedComp;
+            }
+            if (gestureDrawing) {
+                gestureDrawing = false;
+                handleStrokeEnd();
+            }
+            prevFingerTip = {x: cx, y: cy};
+            document.getElementById('draw-status').textContent = 'Erasing';
+            document.getElementById('draw-dot').className = 'status-dot yellow';
+        } else if (fingers.count === 0) {
+            gestureName = 'Fist';
+            airCursor.className = 'active';
+            if (gestureDrawing) {
+                gestureDrawing = false;
+                handleStrokeEnd();
+            }
+            prevFingerTip = null;
+            document.getElementById('draw-status').textContent = 'Paused';
+        } else {
+            airCursor.className = 'active';
+            if (gestureDrawing) {
+                gestureDrawing = false;
+                handleStrokeEnd();
+            }
+            prevFingerTip = null;
+            document.getElementById('draw-status').textContent = 'Ready';
+        }
+
+        if (!isDrawingMode && !isErasingMode && gestureDrawing) {
+            gestureDrawing = false;
+            handleStrokeEnd();
+            prevFingerTip = null;
+            document.getElementById('draw-status').textContent = 'Ready';
+        }
+
+        document.getElementById('gesture-display').textContent = gestureName;
+    }
+
+    // ========== TOGGLES ==========
+    function toggleGesture() {
+        gestureEnabled = !gestureEnabled;
+        document.getElementById('btn-gesture').classList.toggle('active');
+        if (!gestureEnabled) {
+            airCursor.classList.remove('active', 'drawing', 'erasing');
+        }
+    }
+
+    function toggleMouse() {
+        mouseEnabled = !mouseEnabled;
+        document.getElementById('btn-mouse').classList.toggle('active');
+    }
+
+    // ========== VOICE-TO-TEXT ==========
+    let voiceEnabled = false;
+    let recognition = null;
+    let isListening = false;
+    let restartTimeout = null;
+    const voiceDisplay = document.getElementById('voice-text-display');
+    const voiceContent = document.getElementById('voice-text-content');
+
+    function toggleVoice() {
+        voiceEnabled = !voiceEnabled;
+        const btn = document.getElementById('btn-voice');
+        btn.classList.toggle('active');
+
+        if (voiceEnabled) {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                voiceContent.textContent = 'Browser not supported';
+                voiceDisplay.classList.add('active');
+                voiceEnabled = false;
+                btn.classList.remove('active');
+                return;
+            }
+            startVoiceRecognition();
+        } else {
+            stopVoiceRecognition();
+        }
+    }
+
+    function stopVoiceRecognition() {
+        if (restartTimeout) {
+            clearTimeout(restartTimeout);
+            restartTimeout = null;
+        }
+        if (recognition) {
+            try {
+                recognition.onend = null;
+                recognition.onerror = null;
+                recognition.stop();
+            } catch (e) {}
+            recognition = null;
+        }
+        isListening = false;
+        voiceDisplay.classList.remove('active');
+        voiceContent.textContent = 'Listening...';
+    }
+
+    function startVoiceRecognition() {
+        if (!voiceEnabled) return;
+        if (isListening) return;
+
+        try {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) {
+                voiceContent.textContent = 'Browser not supported';
+                voiceDisplay.classList.add('active');
+                voiceEnabled = false;
+                document.getElementById('btn-voice').classList.remove('active');
+                return;
+            }
+
+            recognition = new SR();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = function() {
+                isListening = true;
+                voiceDisplay.classList.add('active');
+                voiceContent.textContent = 'Listening...';
+            };
+
+            recognition.onresult = function(e) {
+                let finalText = '';
+                let interimText = '';
+
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    const transcript = e.results[i][0].transcript.trim();
+                    if (e.results[i].isFinal) {
+                        finalText += transcript + ' ';
+                    } else {
+                        interimText += transcript;
+                    }
+                }
+
+                const displayText = finalText || interimText;
+                if (displayText) {
+                    voiceContent.textContent = displayText;
+                    voiceDisplay.classList.add('active');
+                }
+
+                if (finalText) {
+                    const cmd = finalText.toLowerCase().trim();
+
+                    let commandExecuted = false;
+
+                    if (cmd.includes('undo')) {
+                        undo();
+                        voiceContent.textContent = '✓ Undo';
+                        commandExecuted = true;
+                    } else if (cmd.includes('redo')) {
+                        redo();
+                        voiceContent.textContent = '✓ Redo';
+                        commandExecuted = true;
+                    } else if (cmd.includes('clear') || cmd.includes('erase all')) {
+                        clearCanvas();
+                        voiceContent.textContent = '✓ Cleared';
+                        commandExecuted = true;
+                    } else if (cmd.includes('save') || cmd.includes('export')) {
+                        saveCanvas();
+                        voiceContent.textContent = '✓ Saved';
+                        commandExecuted = true;
+                    } else if (cmd.includes('stop listening')) {
+                        toggleVoice();
+                        return;
+                    }
+
+                    if (commandExecuted) {
+                        if (restartTimeout) clearTimeout(restartTimeout);
+                        restartTimeout = setTimeout(() => {
+                            if (voiceEnabled && isListening) {
+                                voiceContent.textContent = 'Listening...';
+                            }
+                            restartTimeout = null;
+                        }, 2000);
+                    }
+                }
+            };
+
+            recognition.onerror = function(e) {
+                if (e.error === 'not-allowed') {
+                    voiceContent.textContent = '❌ Microphone blocked';
+                    voiceDisplay.classList.add('active');
+                    voiceEnabled = false;
+                    document.getElementById('btn-voice').classList.remove('active');
+                }
+            };
+
+            recognition.onend = function() {
+                isListening = false;
+                if (voiceEnabled) {
+                    if (restartTimeout) clearTimeout(restartTimeout);
+                    restartTimeout = setTimeout(() => {
+                        if (voiceEnabled && !isListening) {
+                            startVoiceRecognition();
+                        }
+                        restartTimeout = null;
+                    }, 500);
+                } else {
+                    voiceDisplay.classList.remove('active');
+                }
+            };
+
+            recognition.start();
+        } catch (e) {
+            if (e.name !== 'InvalidStateError') {
+                voiceContent.textContent = '⚠️ Restarting...';
+                voiceDisplay.classList.add('active');
+            }
+            if (restartTimeout) clearTimeout(restartTimeout);
+            restartTimeout = setTimeout(() => {
+                if (voiceEnabled && !isListening) {
+                    startVoiceRecognition();
+                }
+                restartTimeout = null;
+            }, 1000);
+        }
+    }
+
+    // ========== MATH & SHAPE TOGGLES ==========
+    let mathMode = false,
+        shapeMode = false;
+
+    function toggleMath() { mathMode = !mathMode;
+        document.getElementById('btn-math').classList.toggle('active'); }
+
+    function toggleShape() { shapeMode = !shapeMode;
+        document.getElementById('btn-shape').classList.toggle('active'); }
+
+    // ========== INIT ==========
+    lucide.createIcons();
+
+    window.addEventListener('beforeunload', function() {
+        // Save drawing before page unload
+        saveDrawingData();
+        
+        if (recognition) {
+            try {
+                recognition.onend = null;
+                recognition.onerror = null;
+                recognition.stop();
+            } catch (e) {}
+            recognition = null;
+        }
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+        }
+        if (restartTimeout) {
+            clearTimeout(restartTimeout);
+        }
+    });
+
+    // Periodic auto-save every 30 seconds
+    setInterval(() => {
+        if (document.getElementById('dashboard').classList.contains('hidden') === false) {
+            saveDrawingData(
+                
+            );
+        }
+    }, 30000);
+  </script>
+ </body>
+</html>
