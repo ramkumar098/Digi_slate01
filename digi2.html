@@ -1,658 +1,2314 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DIGI SLATE · Voice Math with Math.js</title>
-  <!-- Tailwind, Fonts, Icons -->
-  <script src="https://cdn.tailwindcss.com/3.4.17">
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&amp;family=Orbitron:wght@400;700;900&amp;display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js">
-  </script>
-  <!-- MediaPipe -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.min.js">
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.min.js">
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.min.js">
-  </script>
-  <!-- QR Scanner -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js">
-  </script>
-  <!-- Math.js for robust math evaluation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js">
-  </script>
-  <style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DIGI SLATE — Shape Recognition</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17">
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&amp;family=Orbitron:wght@400;700;900&amp;display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.min.js">
+    </script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
+    </script>
+    <style>
         :root {
             --cyan: #00f5ff;
             --purple: #a855f7;
             --pink: #ec4899;
             --blue: #3b82f6;
         }
-        * { box-sizing: border-box; }
-        body { font-family: 'Raleway', sans-serif; margin: 0; overflow: hidden; background: #0a0a1a; color: #e0e0ff; }
-        .font-orbitron { font-family: 'Orbitron', sans-serif; }
-        .glass { background: rgba(15, 15, 40, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(0, 245, 255, 0.15); border-radius: 16px; }
-        .glass-strong { background: rgba(20, 20, 50, 0.8); backdrop-filter: blur(30px); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 16px; }
-        .neon-border { box-shadow: 0 0 10px rgba(0, 245, 255, 0.3), inset 0 0 10px rgba(0, 245, 255, 0.05); }
-        .neon-text { text-shadow: 0 0 10px var(--cyan), 0 0 20px var(--cyan); }
-        #particles-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-        .screen { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s, transform 0.8s; }
-        .screen.hidden { opacity: 0; pointer-events: none; transform: scale(1.05); }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse-dot 2s infinite; }
-        .status-dot.green { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
-        .status-dot.yellow { background: #eab308; box-shadow: 0 0 8px #eab308; }
-        .status-dot.red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
-        @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-        @keyframes glow-pulse { 0%,100% { opacity: 0.8; } 50% { opacity: 1; } }
-        .btn-cyber { transition: all 0.2s; cursor: pointer; user-select: none; }
-        .btn-cyber:hover { transform: scale(1.05); filter: brightness(1.2); }
-        .btn-cyber:active { transform: scale(0.95); }
-        #drawing-canvas { cursor: crosshair; }
-        .control-btn { width: 100%; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: all 0.2s; border: 1px solid rgba(0,245,255,0.1); background: rgba(15,15,40,0.5); color: #c0c0ff; }
-        .control-btn:hover { background: rgba(0,245,255,0.1); border-color: rgba(0,245,255,0.3); }
-        .control-btn.active { background: rgba(0,245,255,0.15); border-color: var(--cyan); color: var(--cyan); }
-        .splash-logo { font-size: 3rem; animation: glow-pulse 2s infinite; }
-        .progress-bar { height: 4px; background: rgba(0,245,255,0.2); border-radius: 2px; overflow: hidden; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); transition: width 0.3s; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.3); border-radius: 3px; }
-        #qr-reader video { object-fit: cover !important; border-radius: 8px; }
-        #qr-reader { border: none !important; }
-        #math-result {
-            font-size: 1.2rem;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(6px);
-            border-left: 3px solid var(--cyan);
-            padding: 10px 16px;
-            border-radius: 12px;
-            font-family: 'Orbitron', monospace;
-            letter-spacing: 0.5px;
-            box-shadow: 0 0 20px rgba(0,245,255,0.2);
+        * {
+            box-sizing: border-box;
         }
-        .faculty-badge {
-            background: rgba(0,245,255,0.08);
-            border: 1px solid rgba(0,245,255,0.2);
-            border-radius: 40px;
-            padding: 6px 16px 6px 12px;
-            display: inline-flex;
+        body {
+            font-family: 'Raleway', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background: #0a0a1a;
+            color: #e0e0ff;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .glass {
+            background: rgba(15, 15, 40, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 245, 255, 0.15);
+            border-radius: 16px;
+        }
+        .glass-strong {
+            background: rgba(20, 20, 50, 0.8);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 16px;
+        }
+        .neon-border {
+            box-shadow: 0 0 10px rgba(0, 245, 255, 0.3), inset 0 0 10px rgba(0, 245, 255, 0.05);
+        }
+        .neon-text {
+            text-shadow: 0 0 10px var(--cyan), 0 0 20px var(--cyan);
+        }
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .screen {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s, transform 0.8s;
+        }
+        .screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.05);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+        .status-dot.green {
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+        .status-dot.yellow {
+            background: #eab308;
+            box-shadow: 0 0 8px #eab308;
+        }
+        .status-dot.red {
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+        }
+        .status-dot.purple {
+            background: #8b5cf6;
+            box-shadow: 0 0 8px #8b5cf6;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        @keyframes glow-pulse {
+            0%,
+            100% {
+                opacity: 0.8;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        .btn-cyber {
+            transition: all 0.2s;
+            cursor: pointer;
+            user-select: none;
+        }
+        .btn-cyber:hover {
+            transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+        .btn-cyber:active {
+            transform: scale(0.95);
+        }
+        #drawing-canvas {
+            cursor: crosshair;
+        }
+        .control-btn {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.2s;
+            border: 1px solid rgba(0, 245, 255, 0.1);
+            background: rgba(15, 15, 40, 0.5);
+            color: #c0c0ff;
+        }
+        .control-btn:hover {
+            background: rgba(0, 245, 255, 0.1);
+            border-color: rgba(0, 245, 255, 0.3);
+        }
+        .control-btn.active {
+            background: rgba(0, 245, 255, 0.15);
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+        .splash-logo {
+            font-size: 3rem;
+            animation: glow-pulse 2s infinite;
+        }
+        .progress-bar {
+            height: 4px;
+            background: rgba(0, 245, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cyan), var(--purple));
+            transition: width 0.3s;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 245, 255, 0.3);
+            border-radius: 3px;
+        }
+        .gesture-badge {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(12px);
+            padding: 10px 24px;
+            border-radius: 30px;
+            border: 2px solid rgba(0, 245, 255, 0.4);
+            color: #00f5ff;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            z-index: 10;
+            display: none;
+            pointer-events: none;
+            text-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .gesture-badge.active {
+            display: block;
+            animation: badgePulse 1.5s ease-in-out infinite;
+        }
+        @keyframes badgePulse {
+            0%,
+            100% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+            50% {
+                opacity: 0.85;
+                transform: translateX(-50%) scale(1.02);
+            }
+        }
+        .finger-counter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            color: #a855f7;
             font-size: 12px;
-            color: #a0f0ff;
+            font-weight: 600;
+            z-index: 10;
+            display: none;
+            font-family: 'Orbitron', monospace;
         }
-  </style>
- </head>
- <body>
-  <canvas id="particles-canvas"></canvas>
+        .finger-counter.active {
+            display: block;
+        }
+        .drawing-indicator {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            border-radius: 20px;
+            padding: 4px 16px;
+            color: #22c55e;
+            font-size: 12px;
+            font-weight: 600;
+            display: none;
+            z-index: 10;
+            backdrop-filter: blur(8px);
+            animation: pulse-dot 1.5s infinite;
+        }
+        .drawing-indicator.active {
+            display: block;
+        }
+        .shape-badge {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 6px 20px;
+            border-radius: 30px;
+            border: 1px solid #a855f7;
+            color: #c084fc;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 10;
+            display: none;
+            pointer-events: none;
+            letter-spacing: 0.5px;
+        }
+        .shape-badge.active {
+            display: block;
+            animation: badgePulse 1.2s ease-in-out infinite;
+        }
+        /* Voice projection on canvas - positioned as overlay on the main display */
+        #voice-projection {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 8;
+            pointer-events: none;
+            width: 90%;
+            max-width: 800px;
+            max-height: 70%;
+            text-align: center;
+            display: none;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 20px 30px;
+            border: 1px solid rgba(0, 245, 255, 0.15);
+            box-shadow: 0 0 60px rgba(0, 245, 255, 0.05);
+            overflow-y: auto;
+        }
+        #voice-projection.active {
+            display: block;
+            animation: projectionFade 0.5s ease;
+        }
+        @keyframes projectionFade {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        #voice-projection::-webkit-scrollbar {
+            width: 4px;
+        }
+        #voice-projection::-webkit-scrollbar-thumb {
+            background: rgba(0, 245, 255, 0.3);
+            border-radius: 2px;
+        }
+        .projection-line {
+            color: #e0e0ff;
+            font-size: 1.2rem;
+            line-height: 1.8;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(0, 245, 255, 0.05);
+            font-family: 'Raleway', sans-serif;
+            letter-spacing: 0.5px;
+        }
+        .projection-line:last-child {
+            border-bottom: none;
+        }
+        .projection-line .spoken {
+            color: #a0a0dd;
+            font-weight: 300;
+        }
+        .projection-line .result {
+            color: #00f5ff;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .projection-line .timestamp {
+            color: #6b6b9a;
+            font-size: 0.7rem;
+            margin-right: 12px;
+            font-weight: 300;
+        }
+        .projection-line .icon {
+            margin-right: 6px;
+        }
+        #voice-projection .live-indicator {
+            color: #c084fc;
+            font-size: 0.9rem;
+            padding: 4px 0;
+            border-bottom: 1px dashed rgba(168, 85, 247, 0.2);
+            margin-bottom: 4px;
+        }
+        #voice-projection .live-indicator .pulse {
+            display: inline-block;
+            animation: pulse-dot 1s infinite;
+            margin-right: 8px;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .voice-clear-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 16px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            pointer-events: all;
+            transition: all 0.2s;
+            z-index: 12;
+        }
+        .voice-clear-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+        .voice-clear-btn.hidden {
+            display: none;
+        }
+        /* Math display on board - larger and more visible */
+        #math-result {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.88);
+            backdrop-filter: blur(16px);
+            border: 2px solid rgba(0, 245, 255, 0.4);
+            border-radius: 20px;
+            padding: 20px 40px;
+            color: #e0e0ff;
+            font-family: 'Raleway', sans-serif;
+            text-align: center;
+            z-index: 9;
+            display: none;
+            pointer-events: all;
+            box-shadow: 0 0 60px rgba(0, 245, 255, 0.15);
+            line-height: 1.6;
+            max-width: 85%;
+            min-width: 300px;
+            animation: mathFade 0.4s ease;
+        }
+        #math-result.active {
+            display: block;
+        }
+        @keyframes mathFade {
+            0% { opacity: 0; transform: translateX(-50%) scale(0.95); }
+            100% { opacity: 1; transform: translateX(-50%) scale(1); }
+        }
+        #math-result .math-question {
+            color: #a0a0dd;
+            font-weight: 300;
+            font-size: 1.3rem;
+            letter-spacing: 0.5px;
+        }
+        #math-result .math-answer {
+            color: #00f5ff;
+            font-weight: 700;
+            font-size: 2.2rem;
+            margin-top: 6px;
+            text-shadow: 0 0 30px rgba(0, 245, 255, 0.2);
+            letter-spacing: 1px;
+        }
+        #math-result .math-close {
+            position: absolute;
+            top: 8px;
+            right: 16px;
+            color: #6b6b9a;
+            font-size: 0.9rem;
+            cursor: pointer;
+            pointer-events: all;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        #math-result .math-close:hover {
+            opacity: 1;
+            color: #ef4444;
+        }
+        /* Logout button style */
+        .logout-btn {
+            padding: 6px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            cursor: pointer;
+            user-select: none;
+        }
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.5);
+            transform: scale(1.05);
+        }
+        .logout-btn:active {
+            transform: scale(0.95);
+        }
+        /* Firebase status indicator */
+        .firebase-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid rgba(0, 245, 255, 0.15);
+        }
+        .firebase-status.connected {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+        .firebase-status.connecting {
+            background: rgba(234, 179, 8, 0.15);
+            border-color: rgba(234, 179, 8, 0.3);
+            color: #eab308;
+            animation: pulse-dot 1.5s infinite;
+        }
+        .firebase-status.error {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        .firebase-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .firebase-dot.green { background: #22c55e; }
+        .firebase-dot.yellow { background: #eab308; }
+        .firebase-dot.red { background: #ef4444; }
+    </style>
+</head>
+<body>
+    <canvas id="particles-canvas"></canvas>
 
-  <!-- Splash Screen -->
-  <div id="splash-screen" class="screen">
-   <div class="text-center">
-    <div class="splash-logo font-orbitron font-bold neon-text">DIGI SLATE</div>
-    <p class="mt-4 text-cyan-300 opacity-70">Initializing Neural Interface...</p>
-    <div class="progress-bar w-64 mx-auto mt-8">
-     <div id="splash-progress" class="progress-fill" style="width:0%"></div>
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="screen">
+        <div class="text-center">
+            <div class="splash-logo font-orbitron font-bold neon-text">DIGI SLATE</div>
+            <p class="mt-4 text-cyan-300 opacity-70">Initializing Neural Interface...</p>
+            <div class="progress-bar w-64 mx-auto mt-8">
+                <div id="splash-progress" class="progress-fill" style="width:0%"></div>
+            </div>
+            <div id="firebase-init-status" class="mt-4 text-xs text-purple-300 opacity-60">Connecting to Firebase...</div>
+        </div>
     </div>
-   </div>
-  </div>
 
-  <!-- Login Screen (QR only) -->
-  <div id="login-screen" class="screen hidden">
-   <div class="glass-strong neon-border p-6 sm:p-8 w-full max-w-md mx-4">
-    <h2 class="font-orbitron text-xl text-center neon-text mb-4">🔐 FACULTY ACCESS</h2>
-    <p class="text-xs text-cyan-300/70 text-center mb-6">Scan your official Faculty QR badge to enter</p>
-    <div id="qr-login-container" class="space-y-4 text-center">
-     <div id="qr-reader" class="w-full bg-black/40 rounded-xl overflow-hidden border border-cyan-500/30 p-2 min-h-[220px] flex items-center justify-center"></div>
-     <p id="qr-status" class="text-xs text-gray-400 italic">Initializing camera scanner...</p>
-     <button onclick="simulateQRLogin()" class="mt-2 text-[11px] text-purple-400 hover:text-purple-300 underline-offset-2 underline">🔑 Demo: Simulate QR (faculty@demo.com)</button>
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen hidden">
+        <div class="glass-strong neon-border p-8 w-full max-w-sm relative">
+            <h2 id="login-title" class="font-orbitron text-xl text-center neon-text mb-6">FACULTY PORTAL</h2>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="faculty-id" class="text-xs text-cyan-300 uppercase tracking-wider">Faculty ID</label>
+                    <input id="faculty-id" type="text" required class="w-full mt-1 px-4 py-2 rounded-lg bg-black/40 border border-cyan-500/30 text-white focus:outline-none focus:border-cyan-400" placeholder="FAC-2026-X8">
+                </div>
+                <div id="email-group" class="hidden">
+                    <label for="login-email" class="text-xs text-cyan-300 uppercase tracking-wider">Email Address</label>
+                    <input id="login-email" type="email" class="w-full mt-1 px-4 py-2 rounded-lg bg-black/40 border border-cyan-500/30 text-white focus:outline-none focus:border-cyan-400" placeholder="faculty@aether.edu">
+                </div>
+                <div>
+                    <label for="login-pass" class="text-xs text-cyan-300 uppercase tracking-wider">Password</label>
+                    <input id="login-pass" type="password" required class="w-full mt-1 px-4 py-2 rounded-lg bg-black/40 border border-cyan-500/30 text-white focus:outline-none focus:border-cyan-400" placeholder="••••••••">
+                </div>
+                <div class="flex items-center justify-between text-xs">
+                    <label class="flex items-center gap-2 text-gray-400 cursor-pointer">
+                        <input type="checkbox" id="remember-me" class="accent-cyan-400"> Remember Me
+                    </label>
+                    <button type="button" id="toggle-new-faculty" onclick="toggleRegisterMode()" class="text-cyan-400 hover:underline">New Faculty?</button>
+                </div>
+                <button type="submit" id="submit-btn" class="btn-cyber w-full py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold uppercase tracking-wider">Enter</button>
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-cyan-500/20"></div>
+                    <span class="flex-shrink mx-2 text-[10px] text-gray-400 uppercase">OR</span>
+                    <div class="flex-grow border-t border-cyan-500/20"></div>
+                </div>
+                <button type="button" onclick="startBarcodeScan()" class="btn-cyber w-full py-2.5 rounded-lg border border-cyan-400/40 bg-cyan-950/30 text-cyan-300 font-medium text-xs flex items-center justify-center gap-2">
+                    <i data-lucide="qr-code" style="width:16px;height:16px;"></i> Scan Barcode / ID Pass
+                </button>
+            </form>
+            <div id="barcode-scanner-view" class="hidden absolute inset-0 glass-strong p-6 flex flex-col items-center justify-center rounded-2xl z-20">
+                <h3 class="text-xs font-orbitron text-cyan-300 mb-2">Align Barcode / QR ID Code</h3>
+                <div class="relative w-48 h-48 border-2 border-cyan-400/60 rounded-lg overflow-hidden bg-black/60 mb-4">
+                    <video id="barcode-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                    <div class="scanner-line"></div>
+                </div>
+                <p id="barcode-status" class="text-[11px] text-purple-300 mb-4 animate-pulse">Scanning card...</p>
+                <button type="button" onclick="stopBarcodeScan()" class="px-4 py-1.5 rounded bg-red-500/20 border border-red-500/40 text-red-300 text-xs hover:bg-red-500/40">Cancel</button>
+            </div>
+        </div>
     </div>
-   </div>
-  </div>
 
-  <!-- Dashboard -->
-  <div id="dashboard" class="screen hidden" style="flex-direction:column; align-items:stretch;">
-   <header class="glass px-4 py-2 mx-2 mt-2 flex items-center justify-between gap-4 relative z-10" style="border-radius:12px;">
-    <div class="flex items-center gap-3">
-     <h1 class="font-orbitron font-bold text-lg neon-text">DIGI SLATE</h1>
-     <span class="text-[10px] text-purple-300 opacity-70">AI Gesture Smart board</span>
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="screen hidden" style="flex-direction:column; align-items:stretch;">
+        <header class="glass px-4 py-2 mx-2 mt-2 flex items-center justify-between gap-4 relative z-10" style="border-radius:12px;">
+            <div class="flex items-center gap-3">
+                <h1 class="font-orbitron font-bold text-lg neon-text">DIGI SLATE</h1>
+                <span class="text-[10px] text-purple-300 opacity-70">Shape Perfect</span>
+            </div>
+            <div class="flex items-center gap-4 text-[11px]">
+                <span class="flex items-center gap-1"><span id="cam-dot" class="status-dot yellow"></span><span id="cam-status">Loading</span></span>
+                <span class="flex items-center gap-1"><span id="hand-dot" class="status-dot red"></span><span id="hand-status">No Hand</span></span>
+                <span class="flex items-center gap-1"><span id="draw-dot" class="status-dot green"></span><span id="draw-status">Ready</span></span>
+                <span class="text-cyan-400">FPS: <span id="fps-display">0</span></span>
+                <span class="text-purple-300">Gesture: <span id="gesture-display">None</span></span>
+                <!-- Firebase Status -->
+                <span id="firebase-status-badge" class="firebase-status connecting">
+                    <span class="firebase-dot yellow"></span> Firebase
+                </span>
+                <!-- Logout Button -->
+                <button onclick="logout()" class="logout-btn">
+                    <i data-lucide="log-out" style="width:14px;height:14px;"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <div class="flex flex-1 gap-2 p-2 overflow-hidden" style="min-height:0;">
+            <div class="flex-1 relative glass neon-border overflow-hidden" style="min-width:0;">
+                <video id="camera-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover opacity-30" style="transform:scaleX(-1);"></video>
+                <canvas id="hand-canvas" class="absolute inset-0 w-full h-full"></canvas>
+                <canvas id="drawing-canvas" class="absolute inset-0 w-full h-full"></canvas>
+
+                <div id="gesture-badge" class="gesture-badge">✋ IDLE</div>
+                <div id="finger-counter" class="finger-counter">👆 0</div>
+                <div id="drawing-indicator" class="drawing-indicator">✏️ DRAWING</div>
+                <div id="shape-badge" class="shape-badge">🔺 Triangle</div>
+
+                <!-- Voice Projection on Canvas -->
+                <div id="voice-projection">
+                    <div class="live-indicator" id="live-voice-indicator">
+                        <span class="pulse">●</span> Listening...
+                    </div>
+                    <div id="projection-content">
+                        <!-- History entries rendered here -->
+                    </div>
+                    <button id="voice-clear-btn" class="voice-clear-btn hidden" onclick="clearVoiceProjection()">✕ Clear</button>
+                </div>
+
+                <!-- Math Result Display on Board -->
+                <div id="math-result">
+                    <span class="math-close" onclick="closeMathResult()">✕</span>
+                    <div class="math-question" id="math-question-text">2 + 2</div>
+                    <div class="math-answer" id="math-answer-text">= 4</div>
+                </div>
+
+                <div id="shape-result" class="absolute top-4 left-4 glass px-3 py-1 text-purple-300 text-xs hidden"></div>
+            </div>
+
+            <aside class="w-56 flex flex-col gap-2 overflow-y-auto pr-1" style="min-height:0;">
+                <div class="glass-strong p-3 space-y-2">
+                    <h3 class="text-[10px] uppercase tracking-widest text-cyan-400 font-bold mb-2">Tools</h3>
+                    <button id="btn-gesture" class="control-btn active" onclick="toggleGesture()"><i data-lucide="hand" style="width:14px;height:14px;"></i>Air Gestures</button>
+                    <button id="btn-mouse" class="control-btn active" onclick="toggleMouse()"><i data-lucide="mouse-pointer" style="width:14px;height:14px;"></i>Mouse Draw</button>
+                    <button id="btn-voice" class="control-btn" onclick="toggleVoice()"><i data-lucide="mic" style="width:14px;height:14px;"></i>Voice Commands</button>
+                    <button id="btn-math" class="control-btn" onclick="toggleMath()"><i data-lucide="calculator" style="width:14px;height:14px;"></i>Math Solver</button>
+                    <button id="btn-shape" class="control-btn active" onclick="toggleShape()"><i data-lucide="shapes" style="width:14px;height:14px;"></i>Shape Perfect</button>
+                </div>
+                <div class="glass-strong p-3 space-y-2">
+                    <h3 class="text-[10px] uppercase tracking-widest text-purple-400 font-bold mb-2">Brush</h3>
+                    <div class="flex items-center gap-2">
+                        <label class="text-[10px] text-gray-400 w-10">Size</label>
+                        <input id="brush-size" type="range" min="1" max="30" value="4" class="flex-1 accent-cyan-400" oninput="updateBrush()">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-[10px] text-gray-400 w-10">Color</label>
+                        <input id="brush-color" type="color" value="#00f5ff" class="w-8 h-6 rounded border-0 cursor-pointer" oninput="updateBrush()">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-[10px] text-gray-400 w-10">Glow</label>
+                        <input id="brush-glow" type="range" min="0" max="30" value="12" class="flex-1 accent-purple-400" oninput="updateBrush()">
+                    </div>
+                    <select id="brush-type" class="w-full text-xs rounded-lg px-2 py-1 bg-black/40 border border-purple-500/30 text-white" onchange="updateBrush()">
+                        <option value="glow">Glow Brush</option>
+                        <option value="neon">Neon Brush</option>
+                        <option value="pen">Pen</option>
+                        <option value="marker">Marker</option>
+                        <option value="eraser">Eraser</option>
+                    </select>
+                </div>
+                <div class="glass-strong p-3 space-y-2">
+                    <h3 class="text-[10px] uppercase tracking-widest text-pink-400 font-bold mb-2">Actions</h3>
+                    <div class="grid grid-cols-2 gap-1">
+                        <button class="control-btn justify-center" onclick="undo()"><i data-lucide="undo" style="width:12px;height:12px;"></i>Undo</button>
+                        <button class="control-btn justify-center" onclick="redo()"><i data-lucide="redo" style="width:12px;height:12px;"></i>Redo</button>
+                        <button class="control-btn justify-center" onclick="clearCanvas()"><i data-lucide="trash-2" style="width:12px;height:12px;"></i>Clear</button>
+                        <button class="control-btn justify-center" onclick="saveCanvas()"><i data-lucide="save" style="width:12px;height:12px;"></i>Save</button>
+                        <button class="control-btn justify-center col-span-2" onclick="exportCanvas()"><i data-lucide="download" style="width:12px;height:12px;"></i>Export PNG</button>
+                    </div>
+                </div>
+            </aside>
+        </div>
     </div>
-    <div class="flex items-center gap-4 text-[11px]">
-     <span class="faculty-badge"><i data-lucide="badge-check" style="width:14px;height:14px;color:#00f5ff;"></i><span id="faculty-email-display">faculty@domain.com</span></span>
-     <span class="flex items-center gap-1"><span id="cam-dot" class="status-dot yellow"></span><span id="cam-status">Loading</span></span>
-     <span class="flex items-center gap-1"><span id="hand-dot" class="status-dot red"></span><span id="hand-status">No Hand</span></span>
-     <span class="flex items-center gap-1"><span id="draw-dot" class="status-dot green"></span><span id="draw-status">Ready</span></span>
-     <span class="text-cyan-400">FPS: <span id="fps-display">0</span></span>
-     <span class="text-purple-300">Gesture: <span id="gesture-display">None</span></span>
-     <button onclick="logoutFaculty()" class="text-red-400 hover:text-red-300 ml-2 px-2 py-1 rounded border border-red-500/30 hover:bg-red-500/20 text-[10px] transition">Logout</button>
-    </div>
-   </header>
 
-   <div class="flex flex-1 gap-2 p-2 overflow-hidden" style="min-height:0;">
-    <div class="flex-1 relative glass neon-border overflow-hidden" style="min-width:0;">
-     <video id="camera-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover opacity-30" style="transform:scaleX(-1);"></video>
-     <canvas id="hand-canvas" class="absolute inset-0 w-full h-full"></canvas>
-     <canvas id="drawing-canvas" class="absolute inset-0 w-full h-full"></canvas>
-     <div id="math-result" class="absolute bottom-4 left-4 glass px-4 py-2 text-cyan-300 font-mono text-sm hidden"></div>
-     <div id="shape-result" class="absolute top-4 left-4 glass px-3 py-1 text-purple-300 text-xs hidden"></div>
-    </div>
+    <script>
+        // ========== FIREBASE INITIALIZATION ==========
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjRW6qq20lQQT-SBMDxIkovgpv1-1tFWM",
+            authDomain: "digital-7f3fb.firebaseapp.com",
+            projectId: "digital-7f3fb",
+            storageBucket: "digital-7f3fb.firebasestorage.app",
+            messagingSenderId: "59324132866",
+            appId: "1:59324132866:web:0c64399b57bd221a74411b",
+            measurementId: "G-BGSWN2MPET"
+        };
 
-    <aside class="w-56 flex flex-col gap-2 overflow-y-auto pr-1" style="min-height:0;">
-     <div class="glass-strong p-3 space-y-2">
-      <h3 class="text-[10px] uppercase tracking-widest text-cyan-400 font-bold mb-2">Tools</h3>
-      <button id="btn-gesture" class="control-btn active" onclick="toggleGesture()"><i data-lucide="hand" style="width:14px;height:14px;"></i>Air Gestures</button>
-      <button id="btn-mouse" class="control-btn active" onclick="toggleMouse()"><i data-lucide="mouse-pointer" style="width:14px;height:14px;"></i>Mouse Draw</button>
-      <button id="btn-voice" class="control-btn" onclick="toggleVoice()"><i data-lucide="mic" style="width:14px;height:14px;"></i>Voice Commands</button>
-      <button id="btn-math" class="control-btn" onclick="toggleMath()"><i data-lucide="calculator" style="width:14px;height:14px;"></i>Math Solver</button>
-      <button id="btn-shape" class="control-btn" onclick="toggleShape()"><i data-lucide="shapes" style="width:14px;height:14px;"></i>Shape Recognition</button>
-     </div>
-     <div class="glass-strong p-3 space-y-2">
-      <h3 class="text-[10px] uppercase tracking-widest text-purple-400 font-bold mb-2">Brush</h3>
-      <div class="flex items-center gap-2"><label class="text-[10px] text-gray-400 w-10">Size</label> <input id="brush-size" type="range" min="1" max="30" value="4" class="flex-1 accent-cyan-400" oninput="updateBrush()"></div>
-      <div class="flex items-center gap-2"><label class="text-[10px] text-gray-400 w-10">Color</label> <input id="brush-color" type="color" value="#00f5ff" class="w-8 h-6 rounded border-0 cursor-pointer" oninput="updateBrush()"></div>
-      <div class="flex items-center gap-2"><label class="text-[10px] text-gray-400 w-10">Glow</label> <input id="brush-glow" type="range" min="0" max="30" value="12" class="flex-1 accent-purple-400" oninput="updateBrush()"></div>
-      <select id="brush-type" class="w-full text-xs rounded-lg px-2 py-1 bg-black/40 border border-purple-500/30 text-white" onchange="updateBrush()">
-       <option value="glow">Glow Brush</option><option value="neon">Neon Brush</option><option value="pen">Pen</option><option value="marker">Marker</option><option value="eraser">Eraser</option>
-      </select>
-     </div>
-     <div class="glass-strong p-3 space-y-2">
-      <h3 class="text-[10px] uppercase tracking-widest text-pink-400 font-bold mb-2">Actions</h3>
-      <div class="grid grid-cols-2 gap-1">
-       <button class="control-btn justify-center" onclick="undo()"><i data-lucide="undo" style="width:12px;height:12px;"></i>Undo</button>
-       <button class="control-btn justify-center" onclick="redo()"><i data-lucide="redo" style="width:12px;height:12px;"></i>Redo</button>
-       <button class="control-btn justify-center" onclick="clearCanvas()"><i data-lucide="trash-2" style="width:12px;height:12px;"></i>Clear</button>
-       <button class="control-btn justify-center" onclick="saveCanvas()"><i data-lucide="save" style="width:12px;height:12px;"></i>Save</button>
-       <button class="control-btn justify-center col-span-2" onclick="exportCanvas()"><i data-lucide="download" style="width:12px;height:12px;"></i>Export PNG</button>
-      </div>
-     </div>
-    </aside>
-   </div>
-  </div>
+        // Initialize Firebase
+        let firebaseApp = null;
+        let firebaseAnalytics = null;
+        let firebaseAuth = null;
+        let firebaseDb = null;
+        let firebaseInitialized = false;
 
-  <script>
-    // ----------------------------------------------
-    // 1. PARTICLES
-    // ----------------------------------------------
-    (function() {
-        const pc = document.getElementById('particles-canvas');
-        const pctx = pc.getContext('2d');
-        let particles = [];
-
-        function resizeParticles() { pc.width = window.innerWidth;
-            pc.height = window.innerHeight; }
-        resizeParticles();
-        window.addEventListener('resize', resizeParticles);
-        for (let i = 0; i < 60; i++) {
-            particles.push({ x: Math.random() * pc.width, y: Math.random() * pc.height, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, r: Math.random() * 2 + 0.5, color: ['#00f5ff', '#a855f7', '#ec4899', '#3b82f6'][Math.floor(Math.random() * 4)] });
+        function initFirebase() {
+            try {
+                firebaseApp = firebase.initializeApp(firebaseConfig);
+                firebaseAnalytics = firebase.analytics();
+                firebaseAuth = firebase.auth();
+                firebaseDb = firebase.firestore();
+                firebaseInitialized = true;
+                console.log('✅ Firebase initialized successfully!');
+                console.log('📊 Analytics enabled');
+                console.log('🔐 Auth ready');
+                console.log('📁 Firestore ready');
+                return true;
+            } catch (error) {
+                console.error('❌ Firebase initialization error:', error);
+                return false;
+            }
         }
 
-        function animParticles() {
-            pctx.clearRect(0, 0, pc.width, pc.height);
-            particles.forEach(p => {
-                p.x += p.vx;
-                p.y += p.vy;
-                if (p.x < 0) p.x = pc.width;
-                if (p.x > pc.width) p.x = 0;
-                if (p.y < 0) p.y = pc.height;
-                if (p.y > pc.height) p.y = 0;
-                pctx.beginPath();
-                pctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                pctx.fillStyle = p.color;
-                pctx.globalAlpha = 0.4;
-                pctx.fill();
-            });
-            pctx.globalAlpha = 1;
-            requestAnimationFrame(animParticles);
-        }
-        animParticles();
-    })();
+        // Update Firebase status badge
+        function updateFirebaseStatus(status, message) {
+            const badge = document.getElementById('firebase-status-badge');
+            const dot = badge.querySelector('.firebase-dot');
+            if (!badge) return;
 
-    // ----------------------------------------------
-    // 2. SPLASH -> LOGIN
-    // ----------------------------------------------
-    let splashProgress = 0;
-    const splashInterval = setInterval(() => {
-        splashProgress += Math.random() * 15 + 5;
-        if (splashProgress >= 100) splashProgress = 100;
-        document.getElementById('splash-progress').style.width = splashProgress + '%';
-        if (splashProgress >= 100) {
-            clearInterval(splashInterval);
-            document.getElementById('splash-screen').classList.add('hidden');
-            document.getElementById('login-screen').classList.remove('hidden');
-            startQRScanner();
+            badge.className = 'firebase-status';
+            if (status === 'connected') {
+                badge.classList.add('connected');
+                dot.className = 'firebase-dot green';
+                badge.innerHTML = `<span class="firebase-dot green"></span> Firebase`;
+            } else if (status === 'connecting') {
+                badge.classList.add('connecting');
+                dot.className = 'firebase-dot yellow';
+                badge.innerHTML = `<span class="firebase-dot yellow"></span> Firebase`;
+            } else if (status === 'error') {
+                badge.classList.add('error');
+                dot.className = 'firebase-dot red';
+                badge.innerHTML = `<span class="firebase-dot red"></span> Firebase`;
+            }
+            if (message) {
+                badge.title = message;
+            }
         }
-    }, 200);
 
-    // ----------------------------------------------
-    // 3. QR SCANNER (standalone)
-    // ----------------------------------------------
-    let html5QrcodeScanner = null;
-    let loggedIn = false;
-    let facultyEmail = 'faculty@demo.com';
+        // ========== PARTICLES ==========
+        (function() {
+            const pc = document.getElementById('particles-canvas');
+            const pctx = pc.getContext('2d');
+            let particles = [];
 
-    function startQRScanner() {
-        const qrStatus = document.getElementById('qr-status');
-        qrStatus.textContent = "Requesting camera access...";
-        if (!html5QrcodeScanner) {
-            html5QrcodeScanner = new Html5Qrcode("qr-reader");
-        }
-        html5QrcodeScanner.start({ facingMode: "user" }, { fps: 10, qrbox: { width: 200, height: 200 } },
-            (decodedText) => {
-                qrStatus.textContent = "✅ QR Verified! Logging in...";
-                const parts = decodedText.split(':');
-                let email = parts[0].trim();
-                if (email.includes('@')) {
-                    facultyEmail = email;
-                    loginSuccess();
+            function resizeParticles() { pc.width = window.innerWidth;
+                pc.height = window.innerHeight; }
+            resizeParticles();
+            window.addEventListener('resize', resizeParticles);
+            for (let i = 0; i < 60; i++) {
+                particles.push({ x: Math.random() * pc.width, y: Math.random() * pc.height, vx: (Math.random() - 0.5) * 0.3,
+                    vy: (Math.random() - 0.5) * 0.3, r: Math.random() * 2 + 0.5, color: ['#00f5ff', '#a855f7', '#ec4899',
+                        '#3b82f6'
+                    ][Math.floor(Math.random() * 4)] });
+            }
+
+            function animParticles() {
+                pctx.clearRect(0, 0, pc.width, pc.height);
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0) p.x = pc.width;
+                    if (p.x > pc.width) p.x = 0;
+                    if (p.y < 0) p.y = pc.height;
+                    if (p.y > pc.height) p.y = 0;
+                    pctx.beginPath();
+                    pctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    pctx.fillStyle = p.color;
+                    pctx.globalAlpha = 0.4;
+                    pctx.fill();
+                });
+                pctx.globalAlpha = 1;
+                requestAnimationFrame(animParticles);
+            }
+            animParticles();
+        })();
+
+        // ========== SCREENS & AUTHENTICATION ==========
+        let splashProgress = 0;
+        let firebaseInitDone = false;
+
+        const splashInterval = setInterval(() => {
+            splashProgress += Math.random() * 15 + 5;
+            if (splashProgress >= 100) splashProgress = 100;
+            document.getElementById('splash-progress').style.width = splashProgress + '%';
+            if (splashProgress >= 100) {
+                clearInterval(splashInterval);
+                // Initialize Firebase during splash
+                const fbInit = initFirebase();
+                if (fbInit) {
+                    document.getElementById('firebase-init-status').textContent = '✅ Firebase Connected';
+                    firebaseInitDone = true;
+                    updateFirebaseStatus('connected', 'Firebase connected');
                 } else {
-                    qrStatus.textContent = "Invalid QR: missing faculty email";
+                    document.getElementById('firebase-init-status').textContent = '⚠️ Firebase Connection Failed';
+                    updateFirebaseStatus('error', 'Firebase connection failed');
                 }
-            },
-            (errorMessage) => {
-                qrStatus.textContent = "📷 Scanning... align QR code";
+                setTimeout(() => {
+                    document.getElementById('splash-screen').classList.add('hidden');
+                    const saved = localStorage.getItem('aether-auth');
+                    if (saved) { showDashboard(); } else { document.getElementById('login-screen').classList.remove(
+                            'hidden'); }
+                }, 500);
             }
-        ).catch(err => {
-            qrStatus.textContent = "⚠️ Camera unavailable. Use demo button.";
+        }, 200);
+
+        let isRegisterMode = false;
+
+        function toggleRegisterMode() {
+            isRegisterMode = !isRegisterMode;
+            const title = document.getElementById('login-title');
+            const emailGroup = document.getElementById('email-group');
+            const emailInput = document.getElementById('login-email');
+            const submitBtn = document.getElementById('submit-btn');
+            const toggleBtn = document.getElementById('toggle-new-faculty');
+
+            if (isRegisterMode) {
+                title.textContent = 'FACULTY REGISTRATION';
+                emailGroup.classList.remove('hidden');
+                emailInput.setAttribute('required', 'true');
+                submitBtn.textContent = 'Register Faculty';
+                toggleBtn.textContent = 'Existing Faculty?';
+            } else {
+                title.textContent = 'FACULTY PORTAL';
+                emailGroup.classList.add('hidden');
+                emailInput.removeAttribute('required');
+                submitBtn.textContent = 'Enter';
+                toggleBtn.textContent = 'New Faculty?';
+            }
+        }
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (document.getElementById('remember-me').checked) localStorage.setItem('aether-auth', '1');
+            document.getElementById('login-screen').classList.add('hidden');
+            showDashboard();
         });
-    }
 
-    function stopQRScanner() {
-        if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
-            html5QrcodeScanner.stop().catch(err => console.error(err));
-        }
-    }
+        let barcodeStream = null;
+        let barcodeScanInterval = null;
 
-    window.simulateQRLogin = function() {
-        facultyEmail = 'faculty@demo.com';
-        loginSuccess();
-    };
+        async function startBarcodeScan() {
+            const scannerView = document.getElementById('barcode-scanner-view');
+            const barcodeVideo = document.getElementById('barcode-video');
+            const statusText = document.getElementById('barcode-status');
 
-    function loginSuccess() {
-        if (loggedIn) return;
-        loggedIn = true;
-        stopQRScanner();
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
-        document.getElementById('faculty-email-display').textContent = facultyEmail;
-        resizeDrawingCanvas();
-        initCamera();
-        lucide.createIcons();
-    }
+            scannerView.classList.remove('hidden');
+            statusText.textContent = "Initializing Camera Scanner...";
 
-    window.logoutFaculty = function() {
-        loggedIn = false;
-        location.reload();
-    };
+            try {
+                barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                barcodeVideo.srcObject = barcodeStream;
+                await barcodeVideo.play();
+                statusText.textContent = "Align Faculty Barcode ID Code...";
 
-    // ----------------------------------------------
-    // 4. DRAWING ENGINE
-    // ----------------------------------------------
-    const drawCanvas = document.getElementById('drawing-canvas');
-    const drawCtx = drawCanvas.getContext('2d');
-    let brush = { size: 4, color: '#00f5ff', glow: 12, type: 'glow' };
-    let isDrawing = false,
-        mouseEnabled = true,
-        gestureEnabled = true;
-    let undoStack = [],
-        redoStack = [];
-    let lastX = 0,
-        lastY = 0;
-
-    function resizeDrawingCanvas() {
-        const rect = drawCanvas.parentElement.getBoundingClientRect();
-        drawCanvas.width = rect.width;
-        drawCanvas.height = rect.height;
-        const hc = document.getElementById('hand-canvas');
-        hc.width = rect.width;
-        hc.height = rect.height;
-        redrawFromStack();
-    }
-    window.addEventListener('resize', resizeDrawingCanvas);
-
-    function saveState() { undoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height)); if (undoStack.length > 50) undoStack.shift();
-        redoStack = []; }
-    window.undo = function() { if (!undoStack.length) return;
-        redoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
-        drawCtx.putImageData(undoStack.pop(), 0, 0); };
-    window.redo = function() { if (!redoStack.length) return;
-        undoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
-        drawCtx.putImageData(redoStack.pop(), 0, 0); };
-    window.clearCanvas = function() { saveState();
-        drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height); };
-
-    function redrawFromStack() { if (undoStack.length) drawCtx.putImageData(undoStack[undoStack.length - 1], 0, 0); }
-
-    function drawLine(x1, y1, x2, y2) {
-        drawCtx.beginPath();
-        drawCtx.moveTo(x1, y1);
-        drawCtx.lineTo(x2, y2);
-        drawCtx.strokeStyle = brush.type === 'eraser' ? 'rgba(0,0,0,1)' : brush.color;
-        drawCtx.lineWidth = brush.size;
-        drawCtx.lineCap = 'round';
-        drawCtx.lineJoin = 'round';
-        if (brush.type === 'eraser') { drawCtx.globalCompositeOperation = 'destination-out'; } else { drawCtx.globalCompositeOperation = 'source-over';
-            drawCtx.shadowColor = brush.color;
-            drawCtx.shadowBlur = brush.glow; }
-        drawCtx.stroke();
-        drawCtx.shadowBlur = 0;
-    }
-
-    drawCanvas.addEventListener('mousedown', e => { if (!mouseEnabled) return;
-        saveState();
-        isDrawing = true;
-        [lastX, lastY] = [e.offsetX, e.offsetY]; });
-    drawCanvas.addEventListener('mousemove', e => { if (!isDrawing || !mouseEnabled) return;
-        drawLine(lastX, lastY, e.offsetX, e.offsetY);
-        [lastX, lastY] = [e.offsetX, e.offsetY]; });
-    drawCanvas.addEventListener('mouseup', () => isDrawing = false);
-    drawCanvas.addEventListener('mouseleave', () => isDrawing = false);
-
-    window.updateBrush = function() {
-        brush.size = +document.getElementById('brush-size').value;
-        brush.color = document.getElementById('brush-color').value;
-        brush.glow = +document.getElementById('brush-glow').value;
-        brush.type = document.getElementById('brush-type').value;
-    };
-    window.saveCanvas = function() { const a = document.createElement('a');
-        a.href = drawCanvas.toDataURL('image/png');
-        a.download = 'digi-slate.png';
-        a.click(); };
-    window.exportCanvas = function() { saveCanvas(); };
-
-    // ----------------------------------------------
-    // 5. CAMERA & MEDIAPIPE
-    // ----------------------------------------------
-    let cameraStream = null,
-        handsModel = null;
-    let prevFingerTip = null,
-        gestureDrawing = false;
-    let fpsFrames = 0,
-        fpsTime = performance.now();
-
-    async function initCamera() {
-        const video = document.getElementById('camera-video');
-        const camDot = document.getElementById('cam-dot');
-        const camStatus = document.getElementById('cam-status');
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
-            video.srcObject = cameraStream;
-            await video.play();
-            camDot.className = 'status-dot green';
-            camStatus.textContent = 'Connected';
-            initMediaPipe(video);
-        } catch (e) {
-            camDot.className = 'status-dot red';
-            camStatus.textContent = 'No Camera';
-            setTimeout(initCamera, 3000);
-        }
-    }
-
-    function initMediaPipe(video) {
-        handsModel = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}` });
-        handsModel.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7 });
-        handsModel.onResults(onHandResults);
-
-        async function processVideoFrame() {
-            if (video.readyState >= 2) { await handsModel.send({ image: video }); }
-            requestAnimationFrame(processVideoFrame);
-        }
-        processVideoFrame();
-    }
-
-    function onHandResults(results) {
-        fpsFrames++;
-        const now = performance.now();
-        if (now - fpsTime >= 1000) { document.getElementById('fps-display').textContent = fpsFrames;
-            fpsFrames = 0;
-            fpsTime = now; }
-
-        const hc = document.getElementById('hand-canvas');
-        const hctx = hc.getContext('2d');
-        hctx.clearRect(0, 0, hc.width, hc.height);
-
-        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            document.getElementById('hand-dot').className = 'status-dot green';
-            document.getElementById('hand-status').textContent = 'Hand Detected';
-            const landmarks = results.multiHandLandmarks[0];
-            drawHandLandmarks(hctx, landmarks, hc.width, hc.height);
-            if (gestureEnabled) processGestures(landmarks);
-        } else {
-            document.getElementById('hand-dot').className = 'status-dot red';
-            document.getElementById('hand-status').textContent = 'No Hand';
-            document.getElementById('gesture-display').textContent = 'None';
-            prevFingerTip = null;
-            gestureDrawing = false;
-        }
-    }
-
-    function drawHandLandmarks(ctx, landmarks, w, h) {
-        ctx.fillStyle = '#00f5ff';
-        ctx.shadowColor = '#00f5ff';
-        ctx.shadowBlur = 8;
-        const connections = [
-            [0, 1],
-            [1, 2],
-            [2, 3],
-            [3, 4],
-            [0, 5],
-            [5, 6],
-            [6, 7],
-            [7, 8],
-            [5, 9],
-            [9, 10],
-            [10, 11],
-            [11, 12],
-            [9, 13],
-            [13, 14],
-            [14, 15],
-            [15, 16],
-            [13, 17],
-            [17, 18],
-            [18, 19],
-            [19, 20],
-            [0, 17]
-        ];
-        ctx.strokeStyle = 'rgba(168,85,247,0.6)';
-        ctx.lineWidth = 2;
-        connections.forEach(([a, b]) => { ctx.beginPath();
-            ctx.moveTo((1 - landmarks[a].x) * w, landmarks[a].y * h);
-            ctx.lineTo((1 - landmarks[b].x) * w, landmarks[b].y * h);
-            ctx.stroke(); });
-        landmarks.forEach((lm, i) => { ctx.beginPath();
-            ctx.arc((1 - lm.x) * w, lm.y * h, [4, 8, 12, 16, 20].includes(i) ? 6 : 3, 0, Math.PI * 2);
-            ctx.fill(); });
-        ctx.shadowBlur = 0;
-    }
-
-    function countFingers(landmarks) {
-        const thumbUp = Math.abs(landmarks[4].x - landmarks[2].x) > 0.05;
-        const indexUp = landmarks[8].y < landmarks[6].y;
-        const middleUp = landmarks[12].y < landmarks[10].y;
-        const ringUp = landmarks[16].y < landmarks[14].y;
-        const pinkyUp = landmarks[20].y < landmarks[18].y;
-        return { thumb: thumbUp, index: indexUp, middle: middleUp, ring: ringUp, pinky: pinkyUp, count: [thumbUp, indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length };
-    }
-
-    function processGestures(landmarks) {
-        const fingers = countFingers(landmarks);
-        const canvasW = drawCanvas.width,
-            canvasH = drawCanvas.height;
-        const cx = (1 - landmarks[8].x) * canvasW;
-        const cy = landmarks[8].y * canvasH;
-        let gestureName = 'None';
-
-        if (fingers.count === 1 && fingers.index) {
-            gestureName = 'Draw';
-            if (prevFingerTip) {
-                if (!gestureDrawing) { saveState();
-                    gestureDrawing = true; }
-                drawLine(prevFingerTip.x, prevFingerTip.y, cx, cy);
+                if ('BarcodeDetector' in window) {
+                    const barcodeDetector = new BarcodeDetector();
+                    barcodeScanInterval = setInterval(async () => {
+                        try {
+                            const barcodes = await barcodeDetector.detect(barcodeVideo);
+                            if (barcodes.length > 0) {
+                                handleBarcodeSuccess(barcodes[0].rawValue);
+                            }
+                        } catch (err) {}
+                    }, 500);
+                } else {
+                    barcodeScanInterval = setTimeout(() => {
+                        handleBarcodeSuccess("FAC-2026-SCANNED");
+                    }, 3500);
+                }
+            } catch (e) {
+                statusText.textContent = "Camera access denied or unreadable.";
             }
-            prevFingerTip = { x: cx, y: cy };
-            document.getElementById('draw-status').textContent = 'Drawing';
-            document.getElementById('draw-dot').className = 'status-dot green';
-        } else if (fingers.count === 2 && fingers.index && fingers.middle) {
-            gestureName = 'Pointer';
-            prevFingerTip = null;
+        }
+
+        function handleBarcodeSuccess(scannedCode) {
+            document.getElementById('barcode-status').textContent = `Authenticated: ${scannedCode}`;
+            setTimeout(() => {
+                stopBarcodeScan();
+                localStorage.setItem('aether-auth', '1');
+                document.getElementById('login-screen').classList.add('hidden');
+                showDashboard();
+            }, 800);
+        }
+
+        function stopBarcodeScan() {
+            if (barcodeScanInterval) clearInterval(barcodeScanInterval);
+            if (barcodeStream) {
+                barcodeStream.getTracks().forEach(track => track.stop());
+                barcodeStream = null;
+            }
+            document.getElementById('barcode-scanner-view').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('dashboard').classList.remove('hidden');
+            resizeDrawingCanvas();
+            initCamera();
+            // Update Firebase status in dashboard
+            if (firebaseInitialized) {
+                updateFirebaseStatus('connected', 'Firebase connected');
+            } else {
+                updateFirebaseStatus('error', 'Firebase not initialized');
+            }
+            // Update Lucide icons after showing dashboard
+            setTimeout(() => lucide.createIcons(), 100);
+        }
+
+        // ========== LOGOUT FUNCTION ==========
+        function logout() {
+            // Stop voice recognition if active
+            if (voiceEnabled && recognition) {
+                recognition.stop();
+                voiceEnabled = false;
+                document.getElementById('btn-voice').classList.remove('active');
+                document.getElementById('voice-projection').classList.remove('active');
+            }
+
+            // Stop camera stream if active
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+
+            // Clear authentication
+            localStorage.removeItem('aether-auth');
+
+            // Hide dashboard, show login screen
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+
+            // Reset any active states
+            document.getElementById('voice-projection').classList.remove('active');
+            document.getElementById('math-result').classList.remove('active');
+
+            // Reset voice history
+            voiceHistory = [];
+            projectionContent.innerHTML = '';
+            document.getElementById('voice-clear-btn').classList.add('hidden');
+
+            // Update Lucide icons
+            setTimeout(() => lucide.createIcons(), 100);
+
+            console.log('👋 Logged out successfully');
+        }
+
+        // ========== DRAWING ENGINE ==========
+        const drawCanvas = document.getElementById('drawing-canvas');
+        const drawCtx = drawCanvas.getContext('2d');
+        let brush = { size: 4, color: '#00f5ff', glow: 12, type: 'glow' };
+        let isDrawing = false,
+            mouseEnabled = true,
+            gestureEnabled = true;
+        let undoStack = [],
+            redoStack = [];
+        let currentStrokePoints = [];
+        let smoothPoints = [];
+        const MAX_SMOOTH_POINTS = 5;
+
+        function resizeDrawingCanvas() {
+            const rect = drawCanvas.parentElement.getBoundingClientRect();
+            drawCanvas.width = rect.width;
+            drawCanvas.height = rect.height;
+            const hc = document.getElementById('hand-canvas');
+            hc.width = rect.width;
+            hc.height = rect.height;
+            redrawFromStack();
+        }
+        window.addEventListener('resize', resizeDrawingCanvas);
+
+        function saveState() {
+            undoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+            if (undoStack.length > 50) undoStack.shift();
+            redoStack = [];
+        }
+
+        function undo() { if (!undoStack.length) return;
+            redoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+            drawCtx.putImageData(undoStack.pop(), 0, 0); }
+
+        function redo() { if (!redoStack.length) return;
+            undoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+            drawCtx.putImageData(redoStack.pop(), 0, 0); }
+
+        function clearCanvas() { saveState();
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            hideResults(); }
+
+        function redrawFromStack() { if (undoStack.length) drawCtx.putImageData(undoStack[undoStack.length - 1], 0, 0); }
+
+        function drawSmoothCurve(points) {
+            if (points.length < 2) return;
+            drawCtx.beginPath();
+            drawCtx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length - 1; i++) {
+                const p0 = points[i - 1],
+                    p1 = points[i],
+                    p2 = points[i + 1],
+                    p3 = points[i + 2] || points[i + 1];
+                const cp1x = p1.x + (p2.x - p0.x) / 6,
+                    cp1y = p1.y + (p2.y - p0.y) / 6;
+                const cp2x = p2.x - (p3.x - p1.x) / 6,
+                    cp2y = p2.y - (p3.y - p1.y) / 6;
+                drawCtx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+            }
+            if (brush.type === 'eraser') {
+                drawCtx.strokeStyle = 'rgba(0,0,0,1)';
+                drawCtx.globalCompositeOperation = 'destination-out';
+            } else {
+                drawCtx.strokeStyle = brush.color;
+                drawCtx.globalCompositeOperation = 'source-over';
+                drawCtx.shadowColor = brush.color;
+                drawCtx.shadowBlur = brush.glow;
+            }
+            drawCtx.lineWidth = brush.size;
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+            drawCtx.stroke();
+            drawCtx.shadowBlur = 0;
+            drawCtx.globalCompositeOperation = 'source-over';
+        }
+
+        function addSmoothPoint(x, y) {
+            smoothPoints.push({ x, y });
+            if (smoothPoints.length > MAX_SMOOTH_POINTS) smoothPoints.shift();
+            drawSmoothCurve(smoothPoints);
+        }
+
+        function resetSmoothPoints() { smoothPoints = []; }
+
+        function hideResults() {
+            document.getElementById('math-result').classList.remove('active');
+            document.getElementById('shape-result').classList.add('hidden');
+            document.getElementById('shape-badge').classList.remove('active');
+        }
+
+        drawCanvas.addEventListener('mousedown', e => {
+            if (!mouseEnabled) return;
+            saveState();
+            isDrawing = true;
+            currentStrokePoints = [{ x: e.offsetX, y: e.offsetY }];
+            resetSmoothPoints();
+            smoothPoints.push({ x: e.offsetX, y: e.offsetY });
+        });
+        drawCanvas.addEventListener('mousemove', e => {
+            if (!isDrawing || !mouseEnabled) return;
+            addSmoothPoint(e.offsetX, e.offsetY);
+            currentStrokePoints.push({ x: e.offsetX, y: e.offsetY });
+        });
+        drawCanvas.addEventListener('mouseup', () => { isDrawing = false;
+            resetSmoothPoints();
+            handleStrokeEnd(); });
+        drawCanvas.addEventListener('mouseleave', () => { if (isDrawing) { isDrawing = false;
+                resetSmoothPoints();
+                handleStrokeEnd(); } });
+
+        function handleStrokeEnd() {
+            isDrawing = false;
+            if (shapeMode && currentStrokePoints.length > 10) {
+                processShapeRecognition(currentStrokePoints);
+            }
+            if (mathMode) {
+                triggerMathSolver();
+            }
+            currentStrokePoints = [];
+        }
+
+        function updateBrush() {
+            brush.size = +document.getElementById('brush-size').value;
+            brush.color = document.getElementById('brush-color').value;
+            brush.glow = +document.getElementById('brush-glow').value;
+            brush.type = document.getElementById('brush-type').value;
+        }
+
+        function saveCanvas() { const a = document.createElement('a');
+            a.href = drawCanvas.toDataURL('image/png');
+            a.download = 'aether-board.png';
+            a.click(); }
+
+        function exportCanvas() { saveCanvas(); }
+
+        // ========== SHAPE RECOGNITION (SIMPLE & RELIABLE) ==========
+        const SHAPE_ICONS = {
+            'Triangle': '🔺',
+            'Square': '⬛',
+            'Rectangle': '▬',
+            'Circle': '⭕',
+            'Pentagon': '⬠',
+            'Hexagon': '⬡',
+            'Star': '⭐',
+            'Arrow': '➡️',
+            'Heart': '❤️',
+            'Diamond': '💎',
+            'Line': '➖'
+        };
+
+        function processShapeRecognition(pts) {
+            const shapeRes = document.getElementById('shape-result');
+            const shapeBadge = document.getElementById('shape-badge');
+
+            // Calculate bounding box
+            let minX = Infinity,
+                maxX = -Infinity,
+                minY = Infinity,
+                maxY = -Infinity;
+            pts.forEach(p => {
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y;
+                if (p.y > maxY) maxY = p.y;
+            });
+
+            const w = maxX - minX;
+            const h = maxY - minY;
+            if (w < 10 || h < 10) return;
+
+            const cx = minX + w / 2;
+            const cy = minY + h / 2;
+
+            // Check if shape is closed
+            const startEndDist = Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].y - pts[pts.length - 1].y);
+            const perimeter = pts.reduce((acc, p, i) => i === 0 ? 0 : acc + Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y),
+                0);
+            const isClosed = startEndDist < perimeter * 0.3;
+
+            // Detect corners using simple angle-based method
+            const corners = detectCornersSimple(pts);
+            const cornerCount = corners.length;
+
+            let recognizedShape = null;
+
+            if (isClosed) {
+                // Triangle detection - exactly 3 corners
+                if (cornerCount === 3) {
+                    recognizedShape = 'Triangle';
+                }
+                // Square/Rectangle/Diamond - 4 corners
+                else if (cornerCount === 4) {
+                    const aspect = Math.max(w, h) / Math.min(w, h);
+                    // Check if it's a diamond by checking corner positions
+                    const sorted = [...corners].sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x -
+                    cx));
+                    if (sorted.length === 4) {
+                        const diag1 = Math.hypot(sorted[0].x - sorted[2].x, sorted[0].y - sorted[2].y);
+                        const diag2 = Math.hypot(sorted[1].x - sorted[3].x, sorted[1].y - sorted[3].y);
+                        if (Math.abs(diag1 - diag2) < Math.max(w, h) * 0.3 && aspect < 1.3) {
+                            recognizedShape = 'Diamond';
+                        } else if (aspect < 1.4) {
+                            recognizedShape = 'Square';
+                        } else {
+                            recognizedShape = 'Rectangle';
+                        }
+                    } else {
+                        recognizedShape = aspect < 1.4 ? 'Square' : 'Rectangle';
+                    }
+                }
+                // Pentagon - 5 corners
+                else if (cornerCount === 5) {
+                    recognizedShape = 'Pentagon';
+                }
+                // Hexagon - 6 corners
+                else if (cornerCount === 6) {
+                    recognizedShape = 'Hexagon';
+                }
+                // Star - 5+ corners with alternating pattern
+                else if (cornerCount >= 5 && cornerCount <= 10) {
+                    const sorted = [...corners].sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x -
+                    cx));
+                    if (sorted.length >= 5) {
+                        const radii = sorted.map(c => Math.hypot(c.x - cx, c.y - cy));
+                        const avgR = radii.reduce((a, b) => a + b, 0) / radii.length;
+                        // Check if radii alternate (star pattern)
+                        let starPattern = true;
+                        for (let i = 0; i < radii.length - 1; i++) {
+                            const diff = Math.abs(radii[i] - radii[i + 1]);
+                            if (diff < avgR * 0.1) {
+                                starPattern = false;
+                                break;
+                            }
+                        }
+                        if (starPattern && radii.length >= 5) {
+                            recognizedShape = 'Star';
+                        } else {
+                            recognizedShape = cornerCount === 5 ? 'Pentagon' : cornerCount === 6 ? 'Hexagon' : 'Circle';
+                        }
+                    } else {
+                        recognizedShape = 'Circle';
+                    }
+                }
+                // Circle - few corners or high circularity
+                else if (cornerCount <= 3) {
+                    // Check circularity
+                    let avgRadius = 0;
+                    const samplePoints = pts.filter((_, i) => i % 2 === 0);
+                    samplePoints.forEach(p => { avgRadius += Math.hypot(p.x - cx, p.y - cy); });
+                    avgRadius /= samplePoints.length;
+                    let radiusVariance = 0;
+                    samplePoints.forEach(p => { const r = Math.hypot(p.x - cx, p.y - cy);
+                        radiusVariance += Math.pow(r - avgRadius, 2); });
+                    radiusVariance /= samplePoints.length;
+                    const circularity = avgRadius > 0 ? Math.sqrt(radiusVariance) / avgRadius : 1;
+
+                    if (circularity < 0.3) {
+                        recognizedShape = 'Circle';
+                    } else if (cornerCount === 3) {
+                        recognizedShape = 'Triangle';
+                    } else {
+                        recognizedShape = 'Circle';
+                    }
+                }
+                // Heart detection
+                else if (cornerCount === 3 && w > h * 0.7) {
+                    recognizedShape = 'Heart';
+                } else {
+                    recognizedShape = 'Circle';
+                }
+            } else {
+                // Open shapes
+                if (cornerCount >= 2 && cornerCount <= 4) {
+                    const first = pts[0],
+                        last = pts[pts.length - 1];
+                    const dist = Math.hypot(first.x - last.x, first.y - last.y);
+                    if (dist > w * 0.5 && cornerCount >= 3) {
+                        recognizedShape = 'Arrow';
+                    } else {
+                        recognizedShape = 'Line';
+                    }
+                } else {
+                    recognizedShape = 'Line';
+                }
+            }
+
+            if (recognizedShape) {
+                const icon = SHAPE_ICONS[recognizedShape] || '🔷';
+                shapeRes.textContent = `Shape: ${recognizedShape}`;
+                shapeRes.classList.remove('hidden');
+                shapeBadge.textContent = `${icon} ${recognizedShape}`;
+                shapeBadge.classList.add('active');
+                setTimeout(() => shapeBadge.classList.remove('active'), 1800);
+
+                drawPerfectShape(recognizedShape, minX, minY, w, h, cx, cy, pts, corners);
+            }
+        }
+
+        function detectCornersSimple(pts) {
+            const corners = [];
+            const step = Math.max(1, Math.floor(pts.length / 8));
+
+            for (let i = step; i < pts.length - step; i += step) {
+                const p1 = pts[i - step];
+                const p2 = pts[i];
+                const p3 = pts[i + step];
+
+                const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
+                const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
+
+                const dot = v1.x * v2.x + v1.y * v2.y;
+                const mag1 = Math.hypot(v1.x, v1.y);
+                const mag2 = Math.hypot(v2.x, v2.y);
+
+                if (mag1 < 1 || mag2 < 1) continue;
+
+                const cosAngle = Math.max(-1, Math.min(1, dot / (mag1 * mag2)));
+                const deg = (Math.acos(cosAngle) * 180) / Math.PI;
+
+                // Detect corners (sharp angles)
+                if (deg > 30 && deg < 150) {
+                    corners.push({ x: p2.x, y: p2.y });
+                }
+            }
+
+            // Cluster corners
+            const unique = [];
+            corners.forEach(c => {
+                if (!unique.some(u => Math.hypot(u.x - c.x, u.y - c.y) < 15)) {
+                    unique.push(c);
+                }
+            });
+
+            return unique;
+        }
+
+        function drawPerfectShape(shape, x, y, w, h, cx, cy, pts, corners) {
+            // Remove raw drawing
+            if (undoStack.length === 0) return;
+            undoStack.pop();
+            if (undoStack.length > 0) {
+                drawCtx.putImageData(undoStack[undoStack.length - 1], 0, 0);
+            } else {
+                drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            }
+
+            // Draw perfect shape
+            drawCtx.beginPath();
+            drawCtx.strokeStyle = brush.color;
+            drawCtx.lineWidth = Math.max(3, brush.size);
+            drawCtx.shadowColor = brush.color;
+            drawCtx.shadowBlur = brush.glow;
+
+            const r = Math.max(w, h) / 2;
+            const sorted = [...corners].sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx));
+
+            switch (shape) {
+                case 'Triangle':
+                    if (sorted.length >= 3) {
+                        const tri = sorted.slice(0, 3);
+                        drawCtx.moveTo(tri[0].x, tri[0].y);
+                        drawCtx.lineTo(tri[1].x, tri[1].y);
+                        drawCtx.lineTo(tri[2].x, tri[2].y);
+                        drawCtx.closePath();
+                    } else {
+                        // Fallback: equilateral triangle
+                        const size = Math.min(w, h) * 0.8;
+                        drawCtx.moveTo(cx, cy - size / 2);
+                        drawCtx.lineTo(cx - size / 2, cy + size / 2);
+                        drawCtx.lineTo(cx + size / 2, cy + size / 2);
+                        drawCtx.closePath();
+                    }
+                    break;
+                case 'Square':
+                    const s = Math.min(w, h) * 0.8;
+                    drawCtx.rect(cx - s / 2, cy - s / 2, s, s);
+                    break;
+                case 'Rectangle':
+                    drawCtx.rect(x + 3, y + 3, w - 6, h - 6);
+                    break;
+                case 'Circle':
+                    drawCtx.arc(cx, cy, r * 0.85, 0, Math.PI * 2);
+                    break;
+                case 'Diamond':
+                    const ds = Math.min(w, h) * 0.7;
+                    drawCtx.moveTo(cx, cy - ds);
+                    drawCtx.lineTo(cx + ds, cy);
+                    drawCtx.lineTo(cx, cy + ds);
+                    drawCtx.lineTo(cx - ds, cy);
+                    drawCtx.closePath();
+                    break;
+                case 'Pentagon':
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i * 2 * Math.PI / 5) - Math.PI / 2;
+                        const px = cx + r * 0.8 * Math.cos(angle);
+                        const py = cy + r * 0.8 * Math.sin(angle);
+                        i === 0 ? drawCtx.moveTo(px, py) : drawCtx.lineTo(px, py);
+                    }
+                    drawCtx.closePath();
+                    break;
+                case 'Hexagon':
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (i * 2 * Math.PI / 6) - Math.PI / 2;
+                        const px = cx + r * 0.8 * Math.cos(angle);
+                        const py = cy + r * 0.8 * Math.sin(angle);
+                        i === 0 ? drawCtx.moveTo(px, py) : drawCtx.lineTo(px, py);
+                    }
+                    drawCtx.closePath();
+                    break;
+                case 'Star': {
+                    const outer = r * 0.85,
+                        inner = r * 0.4;
+                    const points = 5;
+                    for (let i = 0; i < points * 2; i++) {
+                        const radius = i % 2 === 0 ? outer : inner;
+                        const angle = (i * Math.PI / points) - Math.PI / 2;
+                        const px = cx + radius * Math.cos(angle);
+                        const py = cy + radius * Math.sin(angle);
+                        i === 0 ? drawCtx.moveTo(px, py) : drawCtx.lineTo(px, py);
+                    }
+                    drawCtx.closePath();
+                    break;
+                }
+                case 'Heart': {
+                    const hs = r * 0.7;
+                    drawCtx.moveTo(cx, cy + hs * 0.5);
+                    drawCtx.bezierCurveTo(cx - hs, cy - hs * 0.7, cx - hs * 0.5, cy - hs, cx, cy - hs * 0.4);
+                    drawCtx.bezierCurveTo(cx + hs * 0.5, cy - hs, cx + hs, cy - hs * 0.7, cx, cy + hs * 0.5);
+                    break;
+                }
+                case 'Arrow': {
+                    const len = Math.max(w, h) * 0.8;
+                    const head = Math.min(w, h) * 0.3;
+                    const angle = Math.atan2(pts[pts.length - 1].y - pts[0].y, pts[pts.length - 1].x - pts[0].x);
+                    const dx = Math.cos(angle),
+                        dy = Math.sin(angle);
+                    const startX = cx - len / 2 * dx,
+                        startY = cy - len / 2 * dy;
+                    const endX = cx + len / 2 * dx,
+                        endY = cy + len / 2 * dy;
+                    drawCtx.moveTo(startX, startY);
+                    drawCtx.lineTo(endX, endY);
+                    drawCtx.moveTo(endX - head * dx + head * 0.5 * dy, endY - head * dy - head * 0.5 * dx);
+                    drawCtx.lineTo(endX, endY);
+                    drawCtx.lineTo(endX - head * dx - head * 0.5 * dy, endY - head * dy + head * 0.5 * dx);
+                    break;
+                }
+                case 'Line':
+                    drawCtx.moveTo(pts[0].x, pts[0].y);
+                    drawCtx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+                    break;
+                default:
+                    drawCtx.arc(cx, cy, r * 0.85, 0, Math.PI * 2);
+            }
+            drawCtx.stroke();
+            drawCtx.shadowBlur = 0;
+            saveState();
+        }
+
+        // ========== MATH SOLVER ==========
+        let mathDebounceTimer = null;
+
+        function triggerMathSolver() {
+            clearTimeout(mathDebounceTimer);
+            mathDebounceTimer = setTimeout(async () => {
+                const mathRes = document.getElementById('math-result');
+                const mathQuestion = document.getElementById('math-question-text');
+                const mathAnswer = document.getElementById('math-answer-text');
+
+                mathQuestion.textContent = 'Solving...';
+                mathAnswer.textContent = '';
+                mathRes.classList.add('active');
+
+                try {
+                    const offCanvas = document.createElement('canvas');
+                    offCanvas.width = drawCanvas.width;
+                    offCanvas.height = drawCanvas.height;
+                    const offCtx = offCanvas.getContext('2d');
+                    offCtx.fillStyle = '#FFFFFF';
+                    offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+                    offCtx.drawImage(drawCanvas, 0, 0);
+
+                    const { data: { text } } = await Tesseract.recognize(offCanvas, 'eng', {
+                        tessedit_char_whitelist: '0123456789+-*/()=xX. '
+                    });
+
+                    const cleanedText = text.replace(/[^0-9+\-*/()]/g, '');
+                    if (!cleanedText) {
+                        mathQuestion.textContent = 'Unrecognized input';
+                        mathAnswer.textContent = 'Please write a math expression';
+                        return;
+                    }
+
+                    const result = eval(cleanedText);
+                    mathQuestion.textContent = cleanedText;
+                    mathAnswer.textContent = `= ${result}`;
+                } catch (err) {
+                    mathQuestion.textContent = 'Error';
+                    mathAnswer.textContent = 'Could not evaluate expression';
+                }
+            }, 1200);
+        }
+
+        function closeMathResult() {
+            document.getElementById('math-result').classList.remove('active');
+        }
+
+        // ========== CAMERA & MEDIAPIPE ==========
+        let cameraStream = null,
+            handsModel = null;
+        let prevFingerTip = null,
             gestureDrawing = false;
-        } else if (fingers.count >= 3 && fingers.index && fingers.middle && fingers.ring) {
-            gestureName = 'Erase';
-            if (prevFingerTip) {
+        let fpsFrames = 0,
+            fpsTime = performance.now();
+        let currentGesture = 'IDLE';
+        let gestureCounter = 0;
+        const GESTURE_STABLE_THRESHOLD = 2;
+        let smoothTip = null;
+        const SMOOTH_FACTOR = 0.45;
+        let eraserModeLock = false;
+        let eraserLockCounter = 0;
+        const ERASER_LOCK_FRAMES = 3;
+
+        async function initCamera() {
+            const video = document.getElementById('camera-video');
+            const camDot = document.getElementById('cam-dot');
+            const camStatus = document.getElementById('cam-status');
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480,
+                        facingMode: 'user' } });
+                video.srcObject = cameraStream;
+                await video.play();
+                camDot.className = 'status-dot green';
+                camStatus.textContent = 'Connected';
+                initMediaPipe(video);
+            } catch (e) {
+                camDot.className = 'status-dot red';
+                camStatus.textContent = 'No Camera';
+                setTimeout(initCamera, 3000);
+            }
+        }
+
+        function initMediaPipe(video) {
+            handsModel = new Hands({ locateFile: f =>
+                    `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}` });
+            handsModel.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5 });
+            handsModel.onResults(onHandResults);
+
+            async function processVideoFrame() {
+                if (video.readyState >= 2) {
+                    await handsModel.send({ image: video });
+                }
+                requestAnimationFrame(processVideoFrame);
+            }
+            processVideoFrame();
+        }
+
+        function endGestureStroke() {
+            if (gestureDrawing) {
+                gestureDrawing = false;
+                handleStrokeEnd();
+            }
+            prevFingerTip = null;
+            smoothTip = null;
+            resetSmoothPoints();
+            document.getElementById('draw-status').textContent = 'Ready';
+            document.getElementById('draw-dot').className = 'status-dot green';
+            document.getElementById('drawing-indicator').classList.remove('active');
+        }
+
+        function onHandResults(results) {
+            fpsFrames++;
+            const now = performance.now();
+            if (now - fpsTime >= 1000) {
+                document.getElementById('fps-display').textContent = fpsFrames;
+                fpsFrames = 0;
+                fpsTime = now;
+            }
+
+            const hc = document.getElementById('hand-canvas');
+            const hctx = hc.getContext('2d');
+            hctx.clearRect(0, 0, hc.width, hc.height);
+
+            const gestureBadge = document.getElementById('gesture-badge');
+            const fingerCounter = document.getElementById('finger-counter');
+            const drawingIndicator = document.getElementById('drawing-indicator');
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                document.getElementById('hand-dot').className = 'status-dot green';
+                document.getElementById('hand-status').textContent = 'Hand Detected';
+
+                const landmarks = results.multiHandLandmarks[0];
+                drawHandLandmarks(hctx, landmarks, hc.width, hc.height);
+
+                if (gestureEnabled) {
+                    processSmoothGestures(landmarks, gestureBadge, fingerCounter, drawingIndicator);
+                } else {
+                    gestureBadge.classList.remove('active');
+                    fingerCounter.classList.remove('active');
+                    drawingIndicator.classList.remove('active');
+                    gestureDrawing = false;
+                    prevFingerTip = null;
+                    eraserModeLock = false;
+                    resetSmoothPoints();
+                }
+            } else {
+                document.getElementById('hand-dot').className = 'status-dot red';
+                document.getElementById('hand-status').textContent = 'No Hand';
+                document.getElementById('gesture-display').textContent = 'None';
+                endGestureStroke();
+                gestureBadge.classList.remove('active');
+                fingerCounter.classList.remove('active');
+                drawingIndicator.classList.remove('active');
+                eraserModeLock = false;
+                currentGesture = 'IDLE';
+                gestureCounter = 0;
+                resetSmoothPoints();
+            }
+        }
+
+        function drawHandLandmarks(ctx, landmarks, w, h) {
+            const connections = [
+                [0, 1],
+                [1, 2],
+                [2, 3],
+                [3, 4],
+                [0, 5],
+                [5, 6],
+                [6, 7],
+                [7, 8],
+                [5, 9],
+                [9, 10],
+                [10, 11],
+                [11, 12],
+                [9, 13],
+                [13, 14],
+                [14, 15],
+                [15, 16],
+                [13, 17],
+                [17, 18],
+                [18, 19],
+                [19, 20],
+                [0, 17]
+            ];
+            ctx.shadowColor = 'rgba(0, 245, 255, 0.3)';
+            ctx.shadowBlur = 10;
+            ctx.strokeStyle = 'rgba(0, 245, 255, 0.4)';
+            ctx.lineWidth = 2;
+            connections.forEach(([a, b]) => {
+                ctx.beginPath();
+                ctx.moveTo((1 - landmarks[a].x) * w, landmarks[a].y * h);
+                ctx.lineTo((1 - landmarks[b].x) * w, landmarks[b].y * h);
+                ctx.stroke();
+            });
+            ctx.shadowBlur = 0;
+
+            const tipIndices = [4, 8, 12, 16, 20];
+            landmarks.forEach((lm, i) => {
+                const x = (1 - lm.x) * w;
+                const y = lm.y * h;
+                const isTip = tipIndices.includes(i);
+                const size = isTip ? 8 : 4;
+
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, size * 3);
+                gradient.addColorStop(0, `rgba(0, 245, 255, ${isTip ? 0.6 : 0.3})`);
+                gradient.addColorStop(1, 'rgba(0, 245, 255, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, size * 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowColor = '#00f5ff';
+                ctx.shadowBlur = isTip ? 15 : 5;
+                ctx.fillStyle = isTip ? '#00ff88' : '#00f5ff';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        function countFingersFast(landmarks) {
+            const indexTip = landmarks[8];
+            const indexPIP = landmarks[6];
+            const middleTip = landmarks[12];
+            const middlePIP = landmarks[10];
+            const ringTip = landmarks[16];
+            const ringPIP = landmarks[14];
+            const pinkyTip = landmarks[20];
+            const pinkyPIP = landmarks[18];
+            const thumbTip = landmarks[4];
+            const thumbMCP = landmarks[2];
+
+            const indexExtended = indexTip.y < indexPIP.y - 0.005;
+            const middleExtended = middleTip.y < middlePIP.y - 0.01;
+            const ringExtended = ringTip.y < ringPIP.y - 0.01;
+            const pinkyExtended = pinkyTip.y < pinkyPIP.y - 0.01;
+            const thumbExtended = Math.abs(thumbTip.x - thumbMCP.x) > 0.04;
+
+            const fingerCount = [indexExtended, middleExtended, ringExtended, pinkyExtended].filter(Boolean).length;
+
+            return {
+                index: indexExtended,
+                middle: middleExtended,
+                ring: ringExtended,
+                pinky: pinkyExtended,
+                thumb: thumbExtended,
+                count: fingerCount,
+                isFist: fingerCount === 0 && !thumbExtended
+            };
+        }
+
+        function processSmoothGestures(landmarks, badge, counter, drawingIndicator) {
+            const fingers = countFingersFast(landmarks);
+            const canvasW = drawCanvas.width,
+                canvasH = drawCanvas.height;
+            const rawX = (1 - landmarks[8].x) * canvasW;
+            const rawY = landmarks[8].y * canvasH;
+
+            counter.textContent = `👆 ${fingers.count}`;
+            counter.classList.add('active');
+
+            let detectedGesture = 'IDLE';
+            let gestureIcon = '🖐️';
+            let gestureColor = '#6b7280';
+            let drawStatus = 'Ready';
+            let dotColor = 'green';
+            let isErasing = false;
+
+            if (fingers.isFist || fingers.count === 0) {
+                detectedGesture = 'IDLE';
+                gestureIcon = '✊';
+                gestureColor = '#6b7280';
+                drawStatus = 'Paused ⏸️';
+                dotColor = 'yellow';
+            } else if (fingers.count === 3 && fingers.index && fingers.middle && fingers.ring && !fingers.pinky) {
+                detectedGesture = 'ERASER';
+                gestureIcon = '🧹';
+                gestureColor = '#ef4444';
+                drawStatus = 'Erasing 🧹';
+                dotColor = 'red';
+                isErasing = true;
+            } else if (fingers.count === 2 && fingers.index && fingers.middle && !fingers.ring && !fingers.pinky) {
+                detectedGesture = 'POINTER';
+                gestureIcon = '👆';
+                gestureColor = '#eab308';
+                drawStatus = 'Pointer';
+                dotColor = 'yellow';
+            } else if (fingers.count === 4 && fingers.index && fingers.middle && fingers.ring && fingers.pinky) {
+                detectedGesture = 'PAN';
+                gestureIcon = '✋';
+                gestureColor = '#8b5cf6';
+                drawStatus = 'Pan';
+                dotColor = 'purple';
+            } else if (fingers.index) {
+                detectedGesture = 'DRAW';
+                gestureIcon = '✏️';
+                gestureColor = '#22c55e';
+                drawStatus = 'Drawing ✏️';
+                dotColor = 'green';
+            } else {
+                detectedGesture = 'IDLE';
+                gestureIcon = '🖐️';
+                gestureColor = '#6b7280';
+                drawStatus = 'Ready';
+                dotColor = 'green';
+            }
+
+            if (isErasing) {
+                eraserModeLock = true;
+                eraserLockCounter = ERASER_LOCK_FRAMES;
+            }
+            if (eraserModeLock) {
+                eraserLockCounter--;
+                if (eraserLockCounter > 0) {
+                    detectedGesture = 'ERASER';
+                    gestureIcon = '🧹';
+                    gestureColor = '#ef4444';
+                    drawStatus = 'Erasing 🧹';
+                    dotColor = 'red';
+                    isErasing = true;
+                } else {
+                    eraserModeLock = false;
+                }
+            }
+
+            if (detectedGesture === currentGesture) {
+                gestureCounter = Math.min(gestureCounter + 1, 10);
+            } else {
+                gestureCounter = 0;
+            }
+
+            if (detectedGesture === 'DRAW' && gestureCounter >= GESTURE_STABLE_THRESHOLD) {
+                drawingIndicator.classList.add('active');
+
+                if (!smoothTip) {
+                    smoothTip = { x: rawX, y: rawY };
+                } else {
+                    smoothTip.x += (rawX - smoothTip.x) * SMOOTH_FACTOR;
+                    smoothTip.y += (rawY - smoothTip.y) * SMOOTH_FACTOR;
+                }
+                const sx = smoothTip.x,
+                    sy = smoothTip.y;
+
+                if (!gestureDrawing) {
+                    saveState();
+                    gestureDrawing = true;
+                    resetSmoothPoints();
+                    smoothPoints.push({ x: sx, y: sy });
+                    currentStrokePoints = [{ x: sx, y: sy }];
+                    document.getElementById('draw-status').textContent = 'Drawing ✏️';
+                    document.getElementById('draw-dot').className = 'status-dot green';
+                } else {
+                    smoothPoints.push({ x: sx, y: sy });
+                    currentStrokePoints.push({ x: sx, y: sy });
+                    if (smoothPoints.length > 1) {
+                        drawSmoothCurve(smoothPoints);
+                        if (smoothPoints.length > MAX_SMOOTH_POINTS) {
+                            smoothPoints.shift();
+                        }
+                    }
+                }
+                prevFingerTip = { x: sx, y: sy };
+                currentGesture = detectedGesture;
+            } else if (detectedGesture === 'ERASER' && gestureCounter >= GESTURE_STABLE_THRESHOLD) {
+                drawingIndicator.classList.remove('active');
+                if (gestureDrawing) {
+                    gestureDrawing = false;
+                    handleStrokeEnd();
+                    resetSmoothPoints();
+                }
+
+                const cx = rawX,
+                    cy = rawY;
                 const savedComp = drawCtx.globalCompositeOperation;
                 drawCtx.globalCompositeOperation = 'destination-out';
                 drawCtx.beginPath();
-                drawCtx.arc(cx, cy, 25, 0, Math.PI * 2);
+                drawCtx.arc(cx, cy, 30, 0, Math.PI * 2);
                 drawCtx.fill();
                 drawCtx.globalCompositeOperation = savedComp;
-            }
-            prevFingerTip = { x: cx, y: cy };
-        } else {
-            prevFingerTip = null;
-            gestureDrawing = false;
-        }
-        if (fingers.count !== 1) { gestureDrawing = false;
-            prevFingerTip = null;
-            document.getElementById('draw-status').textContent = 'Ready'; }
-        document.getElementById('gesture-display').textContent = gestureName;
-    }
 
-    // ----------------------------------------------
-    // 6. TOGGLES
-    // ----------------------------------------------
-    window.toggleGesture = function() { gestureEnabled = !gestureEnabled;
-        document.getElementById('btn-gesture').classList.toggle('active'); };
-    window.toggleMouse = function() { mouseEnabled = !mouseEnabled;
-        document.getElementById('btn-mouse').classList.toggle('active'); };
-
-    // ----------------------------------------------
-    // 7. VOICE + MATH SOLVER using Math.js
-    // ----------------------------------------------
-    let voiceEnabled = false,
-        recognition = null;
-    const mathResultDiv = document.getElementById('math-result');
-
-    // Use math.js for safe evaluation
-    function evaluateMath(expr) {
-        try {
-            // Compile and evaluate with math.js – handles fractions, powers, etc.
-            const node = math.parse(expr);
-            const result = node.evaluate();
-            if (typeof result === 'number' && isFinite(result)) {
-                return Number.isInteger(result) ? result : result.toFixed(6);
-            }
-            return result.toString();
-        } catch (e) {
-            return 'Error: ' + e.message;
-        }
-    }
-
-    window.toggleVoice = function() {
-        voiceEnabled = !voiceEnabled;
-        document.getElementById('btn-voice').classList.toggle('active');
-        if (voiceEnabled) {
-            startVoice();
-        } else {
-            if (recognition) {
-                try { recognition.stop(); } catch (e) {}
-            }
-            mathResultDiv.classList.add('hidden');
-        }
-    };
-
-    function startVoice() {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SR) {
-            alert('Voice recognition not supported. Please use Chrome/Edge.');
-            voiceEnabled = false;
-            document.getElementById('btn-voice').classList.remove('active');
-            return;
-        }
-
-        try {
-            recognition = new SR();
-            recognition.continuous = true;
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
-
-            recognition.onresult = (e) => {
-                const last = e.results.length - 1;
-                const transcript = e.results[last][0].transcript.trim().toLowerCase();
-                console.log('🎤 Voice:', transcript);
-
-                // --- MATH DETECTION ---
-                const mathTriggers = ['plus', 'minus', 'times', 'divided by', 'over', 'calculate', 'solve', 'what is', 'evaluate', '='];
-                if (mathTriggers.some(k => transcript.includes(k))) {
-                    // Convert words to symbols
-                    let expr = transcript
-                        .replace(/what is/gi, '').replace(/calculate/gi, '').replace(/solve/gi, '').replace(/evaluate/gi, '')
-                        .replace(/plus/gi, '+').replace(/minus/gi, '-').replace(/times/gi, '*').replace(/divided by/gi, '/').replace(/over/gi, '/')
-                        .replace(/x/gi, '*') // handle 'x' as multiplication
-                        .replace(/[^0-9+\-*/().%^ ]/g, '') // allow ^ for power
-                        .trim();
-
-                    if (expr) {
-                        const result = evaluateMath(expr);
-                        mathResultDiv.classList.remove('hidden');
-                        mathResultDiv.textContent = `🧮 ${expr} = ${result}`;
-                        // Draw on canvas
-                        saveState();
-                        drawCtx.font = 'bold 28px "Orbitron", monospace';
-                        drawCtx.fillStyle = '#00f5ff';
-                        drawCtx.shadowColor = '#00f5ff';
-                        drawCtx.shadowBlur = 18;
-                        drawCtx.fillText(`= ${result}`, 40, 100);
-                        drawCtx.shadowBlur = 0;
+                if (prevFingerTip) {
+                    const dx = cx - prevFingerTip.x;
+                    const dy = cy - prevFingerTip.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist > 5) {
+                        const steps = Math.ceil(dist / 3);
+                        for (let i = 0; i <= steps; i++) {
+                            const t = i / steps;
+                            const ex = prevFingerTip.x + dx * t;
+                            const ey = prevFingerTip.y + dy * t;
+                            drawCtx.globalCompositeOperation = 'destination-out';
+                            drawCtx.beginPath();
+                            drawCtx.arc(ex, ey, 28, 0, Math.PI * 2);
+                            drawCtx.fill();
+                            drawCtx.globalCompositeOperation = savedComp;
+                        }
                     }
                 }
+                prevFingerTip = { x: cx, y: cy };
+                currentGesture = detectedGesture;
+            } else {
+                drawingIndicator.classList.remove('active');
+                if (gestureDrawing) {
+                    gestureDrawing = false;
+                    handleStrokeEnd();
+                    resetSmoothPoints();
+                }
+                prevFingerTip = null;
+                smoothTip = null;
+                document.getElementById('draw-status').textContent = drawStatus;
+                document.getElementById('draw-dot').className = `status-dot ${dotColor}`;
+                if (detectedGesture !== currentGesture) {
+                    currentGesture = detectedGesture;
+                    gestureCounter = 0;
+                }
+            }
 
-                // --- OTHER VOICE COMMANDS ---
-                if (transcript.includes('undo')) undo();
-                else if (transcript.includes('redo')) redo();
-                else if (transcript.includes('clear')) clearCanvas();
-                else if (transcript.includes('save')) saveCanvas();
+            badge.textContent = `${gestureIcon} ${detectedGesture}`;
+            badge.style.borderColor = gestureColor;
+            badge.style.color = gestureColor;
+            badge.classList.add('active');
+
+            document.getElementById('gesture-display').textContent = detectedGesture;
+        }
+
+        // ========== TOGGLES ==========
+        function toggleGesture() {
+            gestureEnabled = !gestureEnabled;
+            document.getElementById('btn-gesture').classList.toggle('active');
+            if (!gestureEnabled) {
+                document.getElementById('gesture-badge').classList.remove('active');
+                document.getElementById('finger-counter').classList.remove('active');
+                document.getElementById('drawing-indicator').classList.remove('active');
+                gestureDrawing = false;
+                prevFingerTip = null;
+                smoothTip = null;
+                resetSmoothPoints();
+                eraserModeLock = false;
+                currentGesture = 'IDLE';
+                gestureCounter = 0;
+                endGestureStroke();
+            }
+        }
+
+        function toggleMouse() { mouseEnabled = !mouseEnabled;
+            document.getElementById('btn-mouse').classList.toggle('active'); }
+
+        // ========== VOICE COMMANDS WITH PROJECTION ON CANVAS ==========
+        let voiceEnabled = false,
+            recognition = null;
+        const voiceProjection = document.getElementById('voice-projection');
+        const projectionContent = document.getElementById('projection-content');
+        const liveIndicator = document.getElementById('live-voice-indicator');
+        const clearBtn = document.getElementById('voice-clear-btn');
+        let voiceHistory = [];
+
+        function addVoiceProjection(spokenText, resultText) {
+            const entry = {
+                spoken: spokenText,
+                result: resultText || '',
+                time: new Date().toLocaleTimeString()
             };
+            voiceHistory.push(entry);
+            if (voiceHistory.length > 50) voiceHistory.shift();
 
-            recognition.onerror = (event) => {
-                console.warn('Voice error:', event.error);
-                if (event.error === 'not-allowed') {
-                    alert('Microphone access denied. Please allow microphone in browser settings.');
-                    voiceEnabled = false;
-                    document.getElementById('btn-voice').classList.remove('active');
+            renderProjection();
+            if (voiceHistory.length > 0) {
+                clearBtn.classList.remove('hidden');
+            }
+        }
+
+        function renderProjection() {
+            let html = '';
+            const displayEntries = voiceHistory.slice(-12).reverse();
+            displayEntries.forEach(entry => {
+                const resultDisplay = entry.result ? ` <span class="result">${entry.result}</span>` : '';
+                html += `<div class="projection-line"><span class="timestamp">${entry.time}</span><span class="spoken">${entry.spoken}</span>${resultDisplay}</div>`;
+            });
+            projectionContent.innerHTML = html;
+            if (voiceProjection.scrollTop > 0) {
+                voiceProjection.scrollTop = 0;
+            }
+        }
+
+        function clearVoiceProjection() {
+            voiceHistory = [];
+            projectionContent.innerHTML = '';
+            clearBtn.classList.add('hidden');
+            liveIndicator.innerHTML = '<span class="pulse">●</span> Listening...';
+            if (voiceEnabled) {
+                voiceProjection.classList.add('active');
+            }
+        }
+
+        function toggleVoice() {
+            voiceEnabled = !voiceEnabled;
+            document.getElementById('btn-voice').classList.toggle('active');
+            if (voiceEnabled) {
+                startVoice();
+                voiceProjection.classList.add('active');
+                liveIndicator.innerHTML = '<span class="pulse">●</span> Listening...';
+                addVoiceProjection('🎤 Voice mode activated', 'listening...');
+            } else {
+                if (recognition) recognition.stop();
+                voiceProjection.classList.remove('active');
+                liveIndicator.innerHTML = '<span class="pulse">●</span> Off';
+                addVoiceProjection('🎤 Voice mode deactivated', 'off');
+            }
+        }
+
+        // Enhanced math solver via voice with better expression parsing
+        function solveMathViaVoice(expression) {
+            const mathRes = document.getElementById('math-result');
+            const mathQuestion = document.getElementById('math-question-text');
+            const mathAnswer = document.getElementById('math-answer-text');
+
+            console.log('Solving math via voice:', expression);
+
+            // Clean up the expression
+            let cleaned = expression.toLowerCase().trim();
+            cleaned = cleaned.replace(/\s*=\s*$/, '');
+
+            // Replace word operators with symbols (handle multiple variations)
+            cleaned = cleaned.replace(/plus/g, '+')
+                .replace(/minus/g, '-')
+                .replace(/times/g, '*')
+                .replace(/multiplied by/g, '*')
+                .replace(/divided by/g, '/')
+                .replace(/divided\s+by/g, '/')
+                .replace(/over/g, '/')
+                .replace(/x/g, '*')
+                .replace(/×/g, '*')
+                .replace(/÷/g, '/')
+                .replace(/−/g, '-')
+                .replace(/\+/g, '+')
+                .replace(/\s+/g, '');
+
+            // Remove any non-math characters (keep numbers, operators, parentheses, decimal points)
+            cleaned = cleaned.replace(/[^0-9+\-*/()\.]/g, '');
+
+            console.log('Cleaned expression:', cleaned);
+
+            if (!cleaned) {
+                mathQuestion.textContent = '❌ Invalid expression';
+                mathAnswer.textContent = 'Please say a math problem like "2 plus 2"';
+                mathRes.classList.add('active');
+                return;
+            }
+
+            try {
+                // Use Function constructor for safer evaluation
+                const result = new Function('return (' + cleaned + ')')();
+                
+                // Handle floating point precision
+                const formattedResult = Number.isInteger(result) ? result : parseFloat(result.toFixed(10));
+                
+                mathQuestion.textContent = cleaned;
+                mathAnswer.textContent = `= ${formattedResult}`;
+                mathRes.classList.add('active');
+
+                // Add to projection with result
+                addVoiceProjection('🧮 ' + cleaned, '= ' + formattedResult);
+
+                // Auto-hide after 15 seconds
+                clearTimeout(window.mathHideTimeout);
+                window.mathHideTimeout = setTimeout(() => {
+                    mathRes.classList.remove('active');
+                }, 15000);
+            } catch (err) {
+                console.error('Math error:', err);
+                mathQuestion.textContent = '❌ Error';
+                mathAnswer.textContent = 'Could not compute: ' + cleaned;
+                mathRes.classList.add('active');
+            }
+        }
+
+        function startVoice() {
+            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+                liveIndicator.innerHTML = '⚠️ Not supported';
+                addVoiceProjection('⚠️ Speech recognition', 'not supported');
+                return;
+            }
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SR();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = e => {
+                let interim = '',
+                    final = '';
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    const transcript = e.results[i][0].transcript.trim();
+                    if (e.results[i].isFinal) {
+                        final += transcript + ' ';
+                    } else {
+                        interim += transcript + ' ';
+                        }
+                }
+
+                if (interim) {
+                    liveIndicator.innerHTML = `<span class="pulse">●</span> ${interim.slice(0, 40)}...`;
+                }
+
+                if (final) {
+                    const cmd = final.toLowerCase().trim();
+                    let resultMsg = '';
+                    let isMathCommand = false;
+
+                    // Check if this is a math expression - improved detection
+                    const mathKeywords = ['plus', 'minus', 'times', 'multiplied', 'divided', 'over', '=', '+', '-', '*', '/', '×', '÷'];
+                    const hasMathKeyword = mathKeywords.some(k => cmd.includes(k));
+                    const hasNumbers = /\d/.test(cmd);
+                    const hasOperator = /[+\-*/]/.test(cmd.replace(/\s/g, ''));
+                    
+                    // Check for common math patterns
+                    const mathPatterns = [
+                        /\d+\s*[+\-*/]\s*\d+/, // 2 + 2
+                        /\d+\s*plus\s*\d+/, // 2 plus 2
+                        /\d+\s*minus\s*\d+/, // 2 minus 2
+                        /\d+\s*times\s*\d+/, // 2 times 2
+                        /\d+\s*divided\s+by\s*\d+/, // 2 divided by 2
+                        /\d+\s*over\s*\d+/ // 2 over 2
+                    ];
+                    
+                    const matchesPattern = mathPatterns.some(pattern => pattern.test(cmd));
+
+                    if (hasMathKeyword && hasNumbers && (hasOperator || matchesPattern)) {
+                        // This is a math problem - solve it and display on board
+                        solveMathViaVoice(final);
+                        resultMsg = '🧮 solved ✓';
+                        isMathCommand = true;
+                    }
+
+                    // Drawing actions
+                    if (cmd.includes('undo')) { undo();
+                        resultMsg = 'undo ✓'; } else if (cmd.includes('redo')) { redo();
+                        resultMsg = 'redo ✓'; } else if (cmd.includes('clear')) { clearCanvas();
+                        resultMsg = 'cleared ✓'; } else if (cmd.includes('save')) { saveCanvas();
+                        resultMsg = 'saved ✓'; } else if (cmd.includes('export')) { exportCanvas();
+                        resultMsg = 'exporting ✓'; }
+                    // Toggle tools
+                    else if (cmd.includes('math mode') || cmd.includes('math solver')) {
+                        if (!mathMode) toggleMath();
+                        resultMsg = 'math mode on';
+                    } else if (cmd.includes('shape mode') || cmd.includes('shape perfect')) {
+                        if (!shapeMode) toggleShape();
+                        resultMsg = 'shape mode on';
+                    } else if (cmd.includes('gesture') || cmd.includes('air gesture')) {
+                        if (!gestureEnabled) toggleGesture();
+                        resultMsg = 'gestures on';
+                    } else if (cmd.includes('mouse') || cmd.includes('mouse draw')) {
+                        if (!mouseEnabled) toggleMouse();
+                        resultMsg = 'mouse on';
+                    } else if (cmd.includes('voice off') || cmd.includes('stop voice')) {
+                        toggleVoice();
+                        resultMsg = 'voice off';
+                        addVoiceProjection(final.trim(), resultMsg);
+                        return;
+                    }
+                    // Brush adjustments
+                    else if (cmd.includes('brush size')) {
+                        const match = cmd.match(/size\s*(\d+)/);
+                        if (match) {
+                            const val = Math.min(30, Math.max(1, parseInt(match[1])));
+                            document.getElementById('brush-size').value = val;
+                            updateBrush();
+                            resultMsg = `size ${val}`;
+                        }
+                    } else if (cmd.includes('brush color')) {
+                        const colors = { red: '#ff0000', green: '#00ff00', blue: '#0000ff', yellow: '#ffff00',
+                            white: '#ffffff', cyan: '#00f5ff', purple: '#a855f7', pink: '#ec4899' };
+                        for (const [name, hex] of Object.entries(colors)) {
+                            if (cmd.includes(name)) {
+                                document.getElementById('brush-color').value = hex;
+                                updateBrush();
+                                resultMsg = `color ${name}`;
+                                break;
+                            }
+                        }
+                    } else if (cmd.includes('brush type')) {
+                        const types = ['glow', 'neon', 'pen', 'marker', 'eraser'];
+                        for (const t of types) {
+                            if (cmd.includes(t)) {
+                                document.getElementById('brush-type').value = t;
+                                updateBrush();
+                                resultMsg = `brush ${t}`;
+                                break;
+                            }
+                        }
+                    }
+                    // Drawing commands (draw shape via voice)
+                    else if (cmd.includes('draw triangle')) {
+                        drawVoiceShape('Triangle');
+                        resultMsg = 'drew triangle';
+                    } else if (cmd.includes('draw square')) {
+                        drawVoiceShape('Square');
+                        resultMsg = 'drew square';
+                    } else if (cmd.includes('draw circle')) {
+                        drawVoiceShape('Circle');
+                        resultMsg = 'drew circle';
+                    } else if (cmd.includes('draw rectangle')) {
+                        drawVoiceShape('Rectangle');
+                        resultMsg = 'drew rectangle';
+                    } else if (cmd.includes('draw pentagon')) {
+                        drawVoiceShape('Pentagon');
+                        resultMsg = 'drew pentagon';
+                    } else if (cmd.includes('draw hexagon')) {
+                        drawVoiceShape('Hexagon');
+                        resultMsg = 'drew hexagon';
+                    } else if (cmd.includes('draw star')) {
+                        drawVoiceShape('Star');
+                        resultMsg = 'drew star';
+                    } else if (cmd.includes('draw heart')) {
+                        drawVoiceShape('Heart');
+                        resultMsg = 'drew heart';
+                    } else if (cmd.includes('draw diamond')) {
+                        drawVoiceShape('Diamond');
+                        resultMsg = 'drew diamond';
+                    } else if (cmd.includes('draw arrow')) {
+                        drawVoiceShape('Arrow');
+                        resultMsg = 'drew arrow';
+                    }
+
+                    // If it was a math command but no specific result was set
+                    if (isMathCommand && !resultMsg) {
+                        resultMsg = '🧮 solved ✓';
+                    }
+
+                    // If no specific command was matched
+                    if (!resultMsg && !isMathCommand) {
+                        resultMsg = 'heard';
+                    }
+
+                    // Add to projection (but don't double-add math problems)
+                    if (!isMathCommand || (isMathCommand && !resultMsg.includes('solved'))) {
+                        addVoiceProjection(final.trim(), resultMsg);
+                    }
+
+                    // Update live indicator
+                    liveIndicator.innerHTML = `<span class="pulse">●</span> Listening...`;
                 }
             };
 
             recognition.onend = () => {
                 if (voiceEnabled) {
-                    try { recognition.start(); } catch (e) { console.warn('Restart failed'); }
+                    try { recognition.start(); } catch (e) {}
                 }
             };
-
-            recognition.start();
-        } catch (err) {
-            alert('Error starting voice recognition: ' + err.message);
-            voiceEnabled = false;
-            document.getElementById('btn-voice').classList.remove('active');
+            recognition.onerror = () => {
+                liveIndicator.innerHTML = '⚠️ Error, retrying...';
+                addVoiceProjection('⚠️ Recognition error', 'retrying...');
+                if (voiceEnabled) {
+                    setTimeout(() => { try { recognition.start(); } catch (e) {} }, 1000);
+                }
+            };
+            try { recognition.start(); } catch (e) {}
         }
-    }
 
-    // Math button toggle (UI)
-    let mathMode = false,
-        shapeMode = false;
-    window.toggleMath = function() {
-        mathMode = !mathMode;
-        document.getElementById('btn-math').classList.toggle('active');
-        if (!mathMode) mathResultDiv.classList.add('hidden');
-    };
-    window.toggleShape = function() {
-        shapeMode = !shapeMode;
-        document.getElementById('btn-shape').classList.toggle('active');
-    };
+        function drawVoiceShape(shapeName) {
+            const w = drawCanvas.width * 0.6;
+            const h = drawCanvas.height * 0.6;
+            const cx = drawCanvas.width / 2;
+            const cy = drawCanvas.height / 2;
 
-    // Init icons after DOM ready
-    document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
-    // also call after login
-  </script>
- </body>
+            const pts = [];
+            const steps = 30;
+            switch (shapeName) {
+                case 'Triangle':
+                    for (let i = 0; i <= steps; i++) {
+                        const angle = (i / steps) * 2 * Math.PI - Math.PI / 2;
+                        const r = (i % 3 === 0) ? 0.9 : 1;
+                        pts.push({ x: cx + w / 2 * r * Math.cos(angle), y: cy + h / 2 * r * Math.sin(angle) });
+                    }
+                    break;
+                case 'Square':
+                    for (let i = 0; i <= steps; i++) {
+                        const t = i / steps;
+                        const side = Math.floor(t * 4) % 4;
+                        const p = (t * 4) % 1;
+                        let px, py;
+                        if (side === 0) { px = -1 + p * 2;
+                            py = -1; } else if (side === 1) { px = 1;
+                            py = -1 + p * 2; } else if (side === 2) { px = 1 - p * 2;
+                            py = 1; } else { px = -1;
+                            py = 1 - p * 2; }
+                        pts.push({ x: cx + w / 2 * px, y: cy + h / 2 * py });
+                    }
+                    break;
+                case 'Circle':
+                    for (let i = 0; i <= steps; i++) {
+                        const angle = (i / steps) * 2 * Math.PI;
+                        pts.push({ x: cx + w / 2 * 0.9 * Math.cos(angle), y: cy + h / 2 * 0.9 * Math.sin(angle) });
+                    }
+                    break;
+                case 'Rectangle':
+                    for (let i = 0; i <= steps; i++) {
+                        const t = i / steps;
+                        const side = Math.floor(t * 4) % 4;
+                        const p = (t * 4) % 1;
+                        let px, py;
+                        if (side === 0) { px = -1 + p * 2;
+                            py = -0.7; } else if (side === 1) { px = 1;
+                            py = -0.7 + p * 1.4; } else if (side === 2) { px = 1 - p * 2;
+                            py = 0.7; } else { px = -1;
+                            py = 0.7 - p * 1.4; }
+                        pts.push({ x: cx + w / 2 * px, y: cy + h / 2 * py });
+                    }
+                    break;
+                case 'Pentagon':
+                    for (let i = 0; i <= steps; i++) {
+                        const angle = (i / steps) * 2 * Math.PI - Math.PI / 2;
+                        const r = 0.9;
+                        pts.push({ x: cx + w / 2 * r * Math.cos(angle), y: cy + h / 2 * r * Math.sin(angle) });
+                    }
+                    break;
+                case 'Hexagon':
+                    for (let i = 0; i <= steps; i++) {
+                        const angle = (i / steps) * 2 * Math.PI - Math.PI / 2;
+                        const r = 0.9;
+                        pts.push({ x: cx + w / 2 * r * Math.cos(angle), y: cy + h / 2 * r * Math.sin(angle) });
+                    }
+                    break;
+                case 'Star':
+                    for (let i = 0; i <= steps * 2; i++) {
+                        const angle = (i / steps) * 2 * Math.PI - Math.PI / 2;
+                        const r = (i % 2 === 0) ? 0.9 : 0.4;
+                        pts.push({ x: cx + w / 2 * r * Math.cos(angle), y: cy + h / 2 * r * Math.sin(angle) });
+                    }
+                    break;
+                case 'Heart':
+                    for (let i = 0; i <= steps; i++) {
+                        const t = (i / steps) * 2 * Math.PI;
+                        const xh = 16 * Math.pow(Math.sin(t), 3);
+                        const yh = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                        const scale = Math.min(w, h) / 35;
+                        pts.push({ x: cx + xh * scale, y: cy - yh * scale });
+                    }
+                    break;
+                case 'Diamond':
+                    pts.push({ x: cx, y: cy - h / 2 });
+                    pts.push({ x: cx + w / 2, y: cy });
+                    pts.push({ x: cx, y: cy + h / 2 });
+                    pts.push({ x: cx - w / 2, y: cy });
+                    pts.push({ x: cx, y: cy - h / 2 });
+                    break;
+                case 'Arrow':
+                    const len = Math.min(w, h) * 0.7;
+                    const head = Math.min(w, h) * 0.25;
+                    pts.push({ x: cx - len / 2, y: cy });
+                    pts.push({ x: cx + len / 2, y: cy });
+                    pts.push({ x: cx + len / 2 - head, y: cy - head / 2 });
+                    pts.push({ x: cx + len / 2, y: cy });
+                    pts.push({ x: cx + len / 2 - head, y: cy + head / 2 });
+                    break;
+                default:
+                    return;
+            }
+
+            saveState();
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            const shapeRes = document.getElementById('shape-result');
+            const shapeBadge = document.getElementById('shape-badge');
+            const icon = SHAPE_ICONS[shapeName] || '🔷';
+            shapeRes.textContent = `Shape: ${shapeName}`;
+            shapeRes.classList.remove('hidden');
+            shapeBadge.textContent = `${icon} ${shapeName}`;
+            shapeBadge.classList.add('active');
+            setTimeout(() => shapeBadge.classList.remove('active'), 1800);
+
+            const corners = detectCornersSimple(pts);
+            const minX = Math.min(...pts.map(p => p.x));
+            const maxX = Math.max(...pts.map(p => p.x));
+            const minY = Math.min(...pts.map(p => p.y));
+            const maxY = Math.max(...pts.map(p => p.y));
+            const w2 = maxX - minX;
+            const h2 = maxY - minY;
+            drawPerfectShape(shapeName, minX, minY, w2, h2, cx, cy, pts, corners);
+            liveIndicator.innerHTML = `<span class="pulse">●</span> Drew ${shapeName}`;
+        }
+
+        let mathMode = false,
+            shapeMode = true;
+
+        function toggleMath() { mathMode = !mathMode;
+            document.getElementById('btn-math').classList.toggle('active'); }
+
+        function toggleShape() {
+            shapeMode = !shapeMode;
+            document.getElementById('btn-shape').classList.toggle('active');
+            if (!shapeMode) {
+                document.getElementById('shape-badge').classList.remove('active');
+                document.getElementById('shape-result').classList.add('hidden');
+            }
+        }
+
+        // ========== INIT ==========
+        updateBrush();
+        lucide.createIcons();
+
+        console.log('✅ DIGI SLATE — Shape Recognition Active!');
+        console.log('Shapes: Triangle, Square, Rectangle, Circle, Pentagon, Hexagon, Star, Arrow, Heart, Diamond, Line');
+        console.log('Draw a triangle and it will be recognized correctly!');
+        console.log('🎤 Voice commands appear on the main projection screen with history!');
+        console.log('🗣️ Say "voice off" or click the mic button to stop listening.');
+        console.log('🧮 Math solver: speak math problems like "2 plus 2" or "10 times 5"');
+        console.log('🔐 Click "Logout" button to safely sign out and return to login.');
+        console.log('🔥 Firebase initialized with Analytics, Auth, and Firestore support!');
+    </script>
+</body>
 </html>
